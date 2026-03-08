@@ -2,6 +2,10 @@
 
 **Local step-by-step visual debugger for AI agents — trace your LLM runs, inspect spans, understand behavior.**
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/image?repos=Rxflex/agenttrace&type=date&legend=top-left)](https://www.star-history.com/?repos=Rxflex%2Fagenttrace&type=date&legend=top-left)
+
 ---
 
 ## Why AgentTrace?
