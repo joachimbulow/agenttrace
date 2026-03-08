@@ -1,0 +1,120 @@
+.run-list {
+  width: 100%;
+  overflow: auto;
+}
+
+.run-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.run-list-header h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.refresh-btn {
+  padding: 6px 12px;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.refresh-btn:hover {
+  background: #e0e0e0;
+}
+
+.run-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.run-table th,
+.run-table td {
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.run-table th {
+  background: #f8f9fa;
+  font-weight: 600;
+  font-size: 13px;
+  color: #666;
+}
+
+.run-row {
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.run-row:hover {
+  background: #f5f5f5;
+}
+
+.run-row.selected {
+  background: #e3f2fd;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.status-running {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.status-completed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-failed {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.run-name {
+  font-weight: 500;
+}
+
+.run-started,
+.run-duration {
+  color: #666;
+  font-size: 13px;
+}
+
+.run-list-loading,
+.run-list-error,
+.run-list-empty {
+  padding: 24px;
+  text-align: center;
+  color: #666;
+}
+
+.run-list-error button {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.run-list-empty .hint {
+  font-size: 13px;
+  color: #999;
+  margin-top: 8px;
+}
