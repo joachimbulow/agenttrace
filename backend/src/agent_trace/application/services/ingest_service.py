@@ -1,7 +1,13 @@
+"""Ingest service for processing trace events.
+
+This module provides the IngestService which handles ingestion of trace events
+from the SDK, validates data, and persists to repositories.
+"""
 from __future__ import annotations
 
+import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from ...domain.entities import AgentRun, SpanEvent, TraceNode
@@ -15,6 +21,8 @@ if TYPE_CHECKING:
         ISpanEventRepository,
         ITraceNodeRepository,
     )
+
+logger = logging.getLogger(__name__)
 
 
 class IngestService:
@@ -74,14 +82,21 @@ class IngestService:
             event_type = event.type
             data = event.data
 
-            if event_type == "span_start":
-                await self._process_span_start(data, request.run_id)
-            elif event_type == "span_end":
-                await self._process_span_end(data)
-            elif event_type == "span_event":
-                await self._process_span_event(data)
+            try:
+                if event_type == "span_start":
+                    await self._process_span_start(data, request.run_id)
+                elif event_type == "span_end":
+                    await self._process_span_end(data)
+                elif event_type == "span_event":
+                    await self._process_span_event(data)
+                else:
+                    logger.warning(f"Unknown event type: {event_type}")
 
-            accepted_count += 1
+                accepted_count += 1
+            except Exception as e:
+                logger.error(f"Failed to process event {event_type}: {e}")
+                # Continue processing other events rather than failing the batch
+                # This prevents one bad event from breaking the entire batch
 
         return IngestResponse(accepted=accepted_count, run_id=request.run_id)
 
@@ -100,10 +115,7 @@ class IngestService:
         attributes = data.get("attributes", {})
 
         # Parse timestamp or use current
-        if timestamp_str:
-            started_at = self._parse_timestamp(timestamp_str)
-        else:
-            started_at = self._clock.utcnow()
+        started_at = self._parse_timestamp_safe(timestamp_str)
 
         # Map span type
         span_type = self._map_span_type(span_type_str)
@@ -132,18 +144,17 @@ class IngestService:
         attributes = data.get("attributes", {})
 
         if not span_id:
+            logger.warning("span_end event missing span_id, skipping")
             return
 
         # Get existing node
         node = await self._node_repo.get(span_id)
         if not node:
+            logger.warning(f"span_end received for unknown span_id: {span_id}, skipping")
             return
 
         # Parse timestamp or use current
-        if timestamp_str:
-            ended_at = self._parse_timestamp(timestamp_str)
-        else:
-            ended_at = self._clock.utcnow()
+        ended_at = self._parse_timestamp_safe(timestamp_str)
 
         # Update node
         updated_node = TraceNode(
@@ -171,13 +182,11 @@ class IngestService:
         payload = data.get("payload", {})
 
         if not span_id:
+            logger.warning("span_event missing span_id, skipping")
             return
 
         # Parse timestamp or use current
-        if timestamp_str:
-            timestamp = self._parse_timestamp(timestamp_str)
-        else:
-            timestamp = self._clock.utcnow()
+        timestamp = self._parse_timestamp_safe(timestamp_str)
 
         event = SpanEvent(
             id=str(uuid.uuid4()),
@@ -189,19 +198,26 @@ class IngestService:
 
         await self._event_repo.save(event)
 
-    def _parse_timestamp(self, timestamp_str: str) -> datetime:
-        """Parse ISO timestamp string to datetime.
+    def _parse_timestamp_safe(self, timestamp_str: str | None) -> datetime:
+        """Parse ISO timestamp string to datetime with error handling.
 
         Args:
-            timestamp_str: ISO format timestamp string.
+            timestamp_str: ISO format timestamp string, or None.
 
         Returns:
-            Parsed datetime object.
+            Parsed datetime object, or current UTC time if parsing fails.
         """
-        # Handle 'Z' suffix for UTC
-        if timestamp_str.endswith("Z"):
-            timestamp_str = timestamp_str[:-1] + "+00:00"
-        return datetime.fromisoformat(timestamp_str)
+        if not timestamp_str:
+            return self._clock.utcnow()
+
+        try:
+            # Handle 'Z' suffix for UTC
+            if timestamp_str.endswith("Z"):
+                timestamp_str = timestamp_str[:-1] + "+00:00"
+            return datetime.fromisoformat(timestamp_str)
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Failed to parse timestamp '{timestamp_str}': {e}, using current time")
+            return self._clock.utcnow()
 
     def _map_span_type(self, span_type_str: str) -> SpanType:
         """Map string to SpanType enum.
