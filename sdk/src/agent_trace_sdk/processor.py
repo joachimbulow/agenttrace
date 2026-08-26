@@ -13,6 +13,7 @@ from collections import deque
 
 from .domain.interfaces import IEventExporter, ExportBatch, ExportEvent, ExportError
 
+logger = logging.getLogger(__name__)
 
 
 @dataclass
