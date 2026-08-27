@@ -21,5 +21,6 @@ def _merge(parts: dict) -> EnrichmentResult:
 
 
 enrich_chain: Runnable[GateResult, EnrichmentResult] = (
-    RunnableParallel(dmr=dmr_chain, db2=db2_chain, gate=RunnablePassthrough()) | RunnableLambda(_merge)
+    RunnableParallel(dmr=dmr_chain, db2=db2_chain, gate=RunnablePassthrough())
+    | RunnableLambda(_merge)
 ).with_config(run_name="enrich")

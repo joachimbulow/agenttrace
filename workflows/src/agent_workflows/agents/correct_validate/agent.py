@@ -16,12 +16,18 @@ from agent_workflows.services import staging_service
 def _correct_validate(decision: ResultDecision) -> PipelineOutcome:
     verdict = decision.verdict
     record = verdict.diagnosis.enrichment.gate.record
-    correction = verdict.selected_proposal.proposed_correction if verdict.selected_proposal else None
+    correction = (
+        verdict.selected_proposal.proposed_correction if verdict.selected_proposal else None
+    )
 
     apply_summary = staging_service.apply_correction(record.policy_id, correction)
     stage_summary = staging_service.move_to_staging(
         record.policy_id,
-        {"task_type": record.task_type, "rationale": verdict.rationale, "confidence": verdict.confidence},
+        {
+            "task_type": record.task_type,
+            "rationale": verdict.rationale,
+            "confidence": verdict.confidence,
+        },
     )
 
     return PipelineOutcome(

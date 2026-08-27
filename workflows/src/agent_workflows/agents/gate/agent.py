@@ -22,7 +22,9 @@ KNOWN_TASK_TYPES: frozenset[str] = frozenset({"12_11"})
 
 def _gate(record: RawRecord) -> GateResult:
     if record.task_type in KNOWN_TASK_TYPES:
-        return GateResult(record=record, known=True, reason=f"task_type '{record.task_type}' recognized.")
+        return GateResult(
+            record=record, known=True, reason=f"task_type '{record.task_type}' recognized."
+        )
     return GateResult(
         record=record,
         known=False,

@@ -20,11 +20,19 @@ def _save_result(decision: ResultDecision) -> PipelineOutcome:
 
     save_summary = staging_service.save_result(
         record.policy_id,
-        {"task_type": record.task_type, "rationale": verdict.rationale, "confidence": verdict.confidence},
+        {
+            "task_type": record.task_type,
+            "rationale": verdict.rationale,
+            "confidence": verdict.confidence,
+        },
     )
     hitl_summary = staging_service.route_to_hitl(
         record.policy_id,
-        {"task_type": record.task_type, "rationale": verdict.rationale, "confidence": verdict.confidence},
+        {
+            "task_type": record.task_type,
+            "rationale": verdict.rationale,
+            "confidence": verdict.confidence,
+        },
     )
 
     return PipelineOutcome(

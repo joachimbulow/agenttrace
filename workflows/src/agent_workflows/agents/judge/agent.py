@@ -78,4 +78,6 @@ def _judge(diagnosis: DiagnosisResult) -> JudgeVerdict:
     )
 
 
-judge_chain: Runnable[DiagnosisResult, JudgeVerdict] = RunnableLambda(_judge).with_config(run_name="judge")
+judge_chain: Runnable[DiagnosisResult, JudgeVerdict] = RunnableLambda(_judge).with_config(
+    run_name="judge"
+)
