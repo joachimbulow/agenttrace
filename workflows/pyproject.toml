@@ -34,3 +34,11 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.pyrefly]
+python-interpreter-path = ".venv/bin/python"
+project-includes = ["src", "tests"]
+search-path = ["src", "../sdk/src"]
+
+[tool.pyright]
+typeCheckingMode = "off"

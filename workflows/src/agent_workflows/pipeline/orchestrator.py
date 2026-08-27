@@ -74,6 +74,7 @@ async def _run_record(record: RawRecord) -> PipelineOutcome:
         dmr_subagent(gate),
         db2_vehicle_subagent(gate),
     )
+    
     enrichment = EnrichmentResult(gate=gate, dmr=dmr_finding, db2=db2_finding)
 
     # Node 3 -- three parallel diagnostic paths, converge.

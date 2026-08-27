@@ -20,6 +20,7 @@ path is actually meant to check.
 """
 
 from __future__ import annotations
+
 from agent_trace_sdk import trace_span
 
 from agent_workflows.models.schemas import DiagnosisResult, JudgeVerdict
@@ -37,7 +38,7 @@ def judge_node(diagnosis: DiagnosisResult) -> JudgeVerdict:
     dmr_proposal = by_path.get("dmr")
     db2_proposal = by_path.get("db2")
 
-    conflict = bool(
+    conflict = (
         dmr_proposal is not None
         and db2_proposal is not None
         and dmr_proposal.issue_found != db2_proposal.issue_found
