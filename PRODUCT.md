@@ -16,7 +16,14 @@ Primary user: a solo AI/agent developer building an LLM or agent app locally. Th
 
 ## Product Purpose
 
-AgentTrace gives step-by-step visibility into AI agent execution during local development: it captures spans, tool calls, prompts, and responses via a Python SDK, stores them locally (SQLite, no external services), and renders them as an interactive trace tree with a details panel. Success means a developer can go from "my agent did something wrong" to "here's the exact span/prompt/response that caused it" quickly, without standing up production observability infrastructure.
+AgentTrace gives step-by-step visibility into AI agent execution during local development: it captures spans, tool calls, prompts, and responses via a Python SDK, stores them locally (SQLite, no external services). Success means a developer can go from "my agent did something wrong" to "here's the exact span/prompt/response that caused it" quickly, without standing up production observability infrastructure.
+
+The product is moving from a post-hoc trace debugger toward a real-time agent visualization framework. The frontend is being rebuilt around two primary views, replacing the original run-list/trace-tree/details-panel layout:
+
+- **Agent graph view**: renders the actual LangGraph node/edge topology (the workflow definition itself, not just executed spans). Each graph node is shown as a card with clean, componentized detail (reasoning, output, status). First iteration is a static/showcase render with raw data on the cards; live streaming updates (cards animating as the agent actually runs) is an explicit next iteration, not yet built — the backend does not yet stream, it batches and posts after the run completes.
+- **CSV data view**: a standalone, generic data-grid feature — load any CSV and view it as a clean, sortable/filterable table. Not tied to trace/graph data; a general-purpose table viewer inside the same shell.
+
+Both views ship iteratively: raw/static first, with animation and live streaming layered in later. Design and build should leave room for that trajectory rather than treating the first pass as final.
 
 ## Positioning
 
@@ -34,8 +41,10 @@ Existing observability tools (Langfuse, LangSmith, etc.) are built for productio
 
 - Local-first architecture: SQLite database, no Postgres or external services required.
 - Clean/hexagonal backend architecture: domain layer decoupled from infrastructure; repository pattern intended to allow swapping storage later.
-- Current implemented UI surfaces: run list, trace tree, details panel. Roadmap items (not implemented): timeline/waterfall view, filtering/search across runs, run comparison/diff, evaluation scoring, Postgres backend, JSON export.
-- Terminology: "run" (a traced agent execution), "span" (a unit of work within a run: `agent_run`, `step`, `tool_call`, `llm_call`), "event" (custom data attached to a span, e.g. `input`/`output`/`error`), "attribute" (key-value metadata on a span).
+- Current implemented UI surfaces (being replaced): run list, trace tree, details panel.
+- New frontend direction (in progress): an agent graph view (LangGraph node/edge topology, nodes rendered as detail cards) and a standalone CSV data-grid view. First iteration is static/raw-data; live streaming and card animation are planned but not yet backed by the API (SDK currently batches and posts after a run completes — no WebSocket/SSE push exists today).
+- Roadmap items (not implemented): live streaming updates to the graph view, timeline/waterfall view, filtering/search across runs, run comparison/diff, evaluation scoring, Postgres backend, JSON export.
+- Terminology: "run" (a traced agent execution), "span" (a unit of work within a run: `agent_run`, `step`, `tool_call`, `llm_call`), "event" (custom data attached to a span, e.g. `input`/`output`/`error`), "attribute" (key-value metadata on a span), "graph node" (a LangGraph workflow node — the static definition, distinct from a span, which is a single execution of one).
 
 ## Brand Commitments
 
