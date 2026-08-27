@@ -1,21 +1,32 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 
-from agent_workflows.workflows.dummy_wait import run_dummy_wait
+from agent_workflows.workflows.primo_kogen import run_primo_kogen
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the dummy wait workflow.")
+    parser = argparse.ArgumentParser(description="Run the Primo/Kogen data cleanup pipeline.")
     parser.add_argument(
-        "--seconds",
-        type=float,
-        default=1.0,
-        help="How long to wait (default: 1)",
+        "csv_path",
+        nargs="?",
+        default="data/sample_extract.csv",
+        help="Path to the CSV extract (default: data/sample_extract.csv)",
     )
     args = parser.parse_args()
-    result = run_dummy_wait(seconds=args.seconds)
-    print(f"status={result.status} seconds={result.seconds}")
+
+    outcomes = asyncio.run(run_primo_kogen(args.csv_path))
+
+    print(f"Processed {len(outcomes)} record(s):\n")
+    for outcome in outcomes:
+        confidence = f"{outcome.confidence:.2f}" if outcome.confidence is not None else "n/a"
+        branch = outcome.branch or "n/a (rejected at gate)"
+        print(
+            f"  policy_id={outcome.policy_id} task_type={outcome.task_type} "
+            f"known={outcome.known} branch={branch} confidence={confidence}"
+        )
+        print(f"    {outcome.summary}")
 
 
 if __name__ == "__main__":

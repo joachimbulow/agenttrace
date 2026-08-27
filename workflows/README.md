@@ -1,15 +1,45 @@
 # Workflows
 
-PoC package for agent graphs. Folder layout is ready for LangGraph; the only
-implemented flow is a dummy wait so tracing and `uv` are wired.
+PoC package for agent graphs. Folder layout is ready for LangGraph, but the
+orchestrator here is plain async Python, not a real LangGraph `StateGraph`
+-- that wiring is future work (see "Assumptions" below).
+
+The implemented flow is a **Primo/Kogen insurance data cleanup** scaffold:
+a 6-node pipeline (gate -> enrich -> diagnose -> judge -> determine result
+-> correct/save) with two parallel enrichment sub-agents and three parallel
+diagnostic paths. It is a quick, deliberately mocked scaffold meant to give
+the AgentTrace frontend a realistic, structurally interesting graph to
+render -- **not** a real implementation. Every external dependency (DMR,
+DB2, staging, HITL) is a clearly marked `# MOCK` stub in `services/`; only
+CSV loading is real.
+
+See `docs/workflow_design.md` for the full domain design doc.
 
 ```
 src/agent_workflows/
-  types/       shared state / models
-  logic/       pure-ish operations (no tracing)
-  nodes/       traced graph nodes (call logic)
+  models/schemas.py     shared data contracts (dataclasses) between all nodes
+  pipeline/orchestrator.py   control-flow ONLY -- wires the 6 nodes together
+  agents/
+    gate/agent.py                 Node 1 -- "do we know this task?"
+    enrich/
+      dmr_subagent.py             Node 2 -- parallel branch 1
+      db2_vehicle_subagent.py     Node 2 -- parallel branch 2
+    diagnose/agent.py             Node 3 -- 3 parallel diagnostic paths, converge
+    judge/agent.py                Node 4 -- LLM-as-a-judge (mocked), span_type="llm_call"
+    determine_result/agent.py     Node 5 -- thresholds verdict into a branch
+    correct_validate/agent.py     Node 6, Path A -- apply change + stage
+    save_result/agent.py          Node 6, Path B -- HITL / cannot-solve queue
+  services/              all EXTERNAL dependencies, MOCKED except csv_loader
+    dmr_service.py        DMR reference register (# MOCK)
+    db2_service.py        Primo DB2 read access (# MOCK)
+    staging_service.py    staging + HITL queue writes (# MOCK)
+    csv_loader.py          real (not mocked) local CSV read
   utils/       tracing config, helpers
-  workflows/   compose nodes into a run
+  workflows/   compose the pipeline into one traced run (primo_kogen.py)
+data/
+  sample_extract.csv     tiny synthetic fixture for local runs
+docs/
+  workflow_design.md     enriched design doc / domain context
 ```
 
 ## Run
@@ -18,9 +48,48 @@ From this directory (AgentTrace backend on `:8000` if you want the UI):
 
 ```bash
 uv sync
-uv run wait-flow
-uv run wait-flow --seconds 2
+uv run primo-kogen-flow                       # uses data/sample_extract.csv
+uv run primo-kogen-flow data/sample_extract.csv
 ```
 
 Traces export to `http://localhost:8000/api/v1/ingest/events` unless you set
-`AGENTTRACE_ENDPOINT`.
+`AGENTTRACE_ENDPOINT`. If the backend isn't running, export failures do not
+fail the workflow (same pattern as before).
+
+## Known open questions / assumptions
+
+Carried forward from the source spec -- **do not resolve these silently**,
+they're for the domain/source team to confirm:
+
+1. Whether "Diagnose/Propose: three parallel paths" really means DMR + DB2 +
+   rules, or something else. The rules-based third path in
+   `agents/diagnose/agent.py` is an assumption made to fill out the count,
+   not a confirmed answer.
+2. The real Primo CSV extract schema (columns) is not yet finalized.
+   `services/csv_loader.py` is schema-tolerant (only requires `policy_id`
+   and `task_type`; everything else passes through as a raw dict) --
+   adjust once the real schema is known.
+3. The confidence threshold in `agents/determine_result/agent.py`
+   (`CONFIDENCE_THRESHOLD = 0.75`) is a placeholder, not calibrated.
+
+New assumptions made while adapting the source spec's file layout into
+this package's existing conventions:
+
+4. "Conflict" between diagnostic paths (Node 4, judge) is defined narrowly
+   as the DMR-driven and DB2-driven proposals disagreeing with each other
+   on whether an issue exists. The rules-based path contributes to which
+   proposal gets *selected* but is not itself treated as a source of
+   conflict, since it checks a different concern (format anomalies) than
+   the two source-driven paths. See `agents/judge/agent.py`.
+5. The orchestrator processes every record in the CSV concurrently (one
+   `asyncio.gather` over all rows, each running the full gate -> ... ->
+   branch chain), not sequentially -- this doesn't change the per-record
+   graph shape, but means the trace for a multi-row CSV shows several
+   parallel per-record subtrees under one root span.
+6. No real LangGraph `StateGraph` is used -- `pipeline/orchestrator.py` is
+   plain async Python with explicit `asyncio.gather` calls for the parallel
+   branches. The folder layout is kept LangGraph-ready per the package's
+   existing description, but wiring an actual graph is future work.
+7. `services/staging_service.py`'s "staging area" and "HITL queue" are
+   in-memory lists that reset every process run (no persistence) -- fine
+   for a scaffold, not representative of a real staging store.

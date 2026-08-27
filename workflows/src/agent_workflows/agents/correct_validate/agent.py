@@ -1,0 +1,35 @@
+"""Node 6, Path A -- Correct / Validate (high confidence).
+
+(1) apply the proposed correction (mocked), (2) move the record to
+Staging / Ready to Migrate (mocked). Both external effects live in
+services/staging_service.py, marked `# MOCK` there.
+"""
+
+from __future__ import annotations
+
+from agent_trace_sdk import trace_span
+
+from agent_workflows.models.schemas import PipelineOutcome, ResultDecision
+from agent_workflows.services import staging_service
+
+
+@trace_span(name="correct_validate", span_type="step")
+def correct_validate_node(decision: ResultDecision) -> PipelineOutcome:
+    verdict = decision.verdict
+    record = verdict.diagnosis.enrichment.gate.record
+    correction = verdict.selected_proposal.proposed_correction if verdict.selected_proposal else None
+
+    apply_summary = staging_service.apply_correction(record.policy_id, correction)
+    stage_summary = staging_service.move_to_staging(
+        record.policy_id,
+        {"task_type": record.task_type, "rationale": verdict.rationale, "confidence": verdict.confidence},
+    )
+
+    return PipelineOutcome(
+        policy_id=record.policy_id,
+        task_type=record.task_type,
+        known=True,
+        branch="correct_validate",
+        confidence=verdict.confidence,
+        summary=f"{apply_summary} {stage_summary}",
+    )

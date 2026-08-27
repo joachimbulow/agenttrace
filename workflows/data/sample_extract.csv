@@ -1,0 +1,8 @@
+policy_id,task_type,plate_number,owner_name,vehicle_make,vehicle_model,registration_date
+POL-1001,12_11,AB12345,Anna Larsen,Volvo,V60,2019-05-01
+POL-1002,12_11,000000,Bo Madsen,Volvo,XC60,2018-11-12
+POL-1003,12_11,CD44444,Cecilie Holm,Toyota,Corolla,2020-02-20
+POL-1004,99_99,XY00000,Dan Vig,Ford,Focus,2017-07-07
+POL-1005,12_11,IJ22222,Ida Sund,Mazda,3,2016-03-15
+POL-1006,12_11,EF77777,Erik Nissen,Skoda,Octavia,2021-09-09
+POL-1007,12_11,GH11111,Gitte Poulsen,Kia,Sportage,2015-01-30

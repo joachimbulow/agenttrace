@@ -1,3 +1,3 @@
-from agent_workflows.workflows.dummy_wait import run_dummy_wait
+from agent_workflows.workflows.primo_kogen import run_primo_kogen
 
-__all__ = ["run_dummy_wait"]
+__all__ = ["run_primo_kogen"]

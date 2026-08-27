@@ -29,6 +29,7 @@ dist/
 *.db
 *.sqlite
 data/
+!workflows/data/
 
 # Logs
 *.log
