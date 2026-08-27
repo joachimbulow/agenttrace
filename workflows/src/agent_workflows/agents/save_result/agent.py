@@ -8,14 +8,13 @@ here -- this path is never skipped for low-confidence/conflicted cases.
 
 from __future__ import annotations
 
-from agent_trace_sdk import trace_span
+from langchain_core.runnables import Runnable, RunnableLambda
 
 from agent_workflows.models.schemas import PipelineOutcome, ResultDecision
 from agent_workflows.services import staging_service
 
 
-@trace_span(name="save_result", span_type="step")
-def save_result_node(decision: ResultDecision) -> PipelineOutcome:
+def _save_result(decision: ResultDecision) -> PipelineOutcome:
     verdict = decision.verdict
     record = verdict.diagnosis.enrichment.gate.record
 
@@ -36,3 +35,8 @@ def save_result_node(decision: ResultDecision) -> PipelineOutcome:
         confidence=verdict.confidence,
         summary=f"{save_summary} {hitl_summary}",
     )
+
+
+save_result_chain: Runnable[ResultDecision, PipelineOutcome] = RunnableLambda(
+    _save_result
+).with_config(run_name="save_result")

@@ -7,14 +7,13 @@ services/staging_service.py, marked `# MOCK` there.
 
 from __future__ import annotations
 
-from agent_trace_sdk import trace_span
+from langchain_core.runnables import Runnable, RunnableLambda
 
 from agent_workflows.models.schemas import PipelineOutcome, ResultDecision
 from agent_workflows.services import staging_service
 
 
-@trace_span(name="correct_validate", span_type="step")
-def correct_validate_node(decision: ResultDecision) -> PipelineOutcome:
+def _correct_validate(decision: ResultDecision) -> PipelineOutcome:
     verdict = decision.verdict
     record = verdict.diagnosis.enrichment.gate.record
     correction = verdict.selected_proposal.proposed_correction if verdict.selected_proposal else None
@@ -33,3 +32,8 @@ def correct_validate_node(decision: ResultDecision) -> PipelineOutcome:
         confidence=verdict.confidence,
         summary=f"{apply_summary} {stage_summary}",
     )
+
+
+correct_validate_chain: Runnable[ResultDecision, PipelineOutcome] = RunnableLambda(
+    _correct_validate
+).with_config(run_name="correct_validate")

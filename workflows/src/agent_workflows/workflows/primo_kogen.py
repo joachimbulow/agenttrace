@@ -20,7 +20,12 @@ async def run_primo_kogen(csv_path: str) -> list[PipelineOutcome]:
     """
     result: list[PipelineOutcome] | None = None
     try:
-        with Tracer(name="primo_kogen_pipeline", endpoint=ingest_endpoint()):
+        # `Tracer.__enter__` creates the root span but doesn't push it as the
+        # ambient "current span"; entering it explicitly (the second
+        # `root_span` context) is what lets AgentTraceCallbackHandler's
+        # fallback (see utils/tracing.py) resolve each record's graph run as
+        # a child of this root instead of an orphaned top-level span.
+        with Tracer(name="primo_kogen_pipeline", endpoint=ingest_endpoint()) as root_span, root_span:
             result = await run_pipeline(csv_path)
         # The SDK schedules span export (and the final flush on __exit__) as
         # fire-and-forget tasks on the running loop rather than awaiting

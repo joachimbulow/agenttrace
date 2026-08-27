@@ -1,8 +1,9 @@
 # Workflows
 
-PoC package for agent graphs. Folder layout is ready for LangGraph, but the
-orchestrator here is plain async Python, not a real LangGraph `StateGraph`
--- that wiring is future work (see "Assumptions" below).
+PoC package for agent graphs. The orchestrator is a real LangGraph
+`StateGraph`; each agent is an LCEL `Runnable`, and node-level tracing runs
+through a LangChain callback handler (see `pipeline/orchestrator.py` and
+`utils/tracing.py`).
 
 The implemented flow is a **Primo/Kogen insurance data cleanup** scaffold:
 a 6-node pipeline (gate -> enrich -> diagnose -> judge -> determine result
@@ -86,10 +87,10 @@ this package's existing conventions:
    branch chain), not sequentially -- this doesn't change the per-record
    graph shape, but means the trace for a multi-row CSV shows several
    parallel per-record subtrees under one root span.
-6. No real LangGraph `StateGraph` is used -- `pipeline/orchestrator.py` is
-   plain async Python with explicit `asyncio.gather` calls for the parallel
-   branches. The folder layout is kept LangGraph-ready per the package's
-   existing description, but wiring an actual graph is future work.
+6. `pipeline/orchestrator.py` is a LangGraph `StateGraph`; `enrich` and
+   `diagnose` are each a single graph node whose parallel sub-agents are
+   expressed via LCEL `RunnableParallel` rather than as separate graph
+   nodes -- see that module's docstring for why.
 7. `services/staging_service.py`'s "staging area" and "HITL queue" are
    in-memory lists that reset every process run (no persistence) -- fine
    for a scaffold, not representative of a real staging store.

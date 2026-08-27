@@ -1,8 +1,9 @@
 """Node 4 -- LLM as a Judge.
 
 # MOCK -- no real LLM call happens here. This is a deterministic stub
-standing in for a future real LLM-as-judge call, hence `span_type="llm_call"`
-on the traced node even though nothing calls out to a model yet.
+standing in for a future real LLM-as-judge call, hence the `judge` graph
+node is tagged `span_type="llm_call"` (see pipeline/orchestrator.py) even
+though nothing here calls out to a model yet.
 
 Reviews the (possibly conflicting) proposals from the three diagnostic
 paths and adjudicates a single recommended outcome + confidence, using a
@@ -21,7 +22,7 @@ path is actually meant to check.
 
 from __future__ import annotations
 
-from agent_trace_sdk import trace_span
+from langchain_core.runnables import Runnable, RunnableLambda
 
 from agent_workflows.models.schemas import DiagnosisResult, JudgeVerdict
 
@@ -31,8 +32,7 @@ from agent_workflows.models.schemas import DiagnosisResult, JudgeVerdict
 _CONFLICT_PENALTY = 0.6
 
 
-@trace_span(name="judge", span_type="llm_call")
-def judge_node(diagnosis: DiagnosisResult) -> JudgeVerdict:
+def _judge(diagnosis: DiagnosisResult) -> JudgeVerdict:
     proposals = diagnosis.proposals
     by_path = {p.path: p for p in proposals}
     dmr_proposal = by_path.get("dmr")
@@ -76,3 +76,6 @@ def judge_node(diagnosis: DiagnosisResult) -> JudgeVerdict:
         confidence=confidence,
         rationale=rationale,
     )
+
+
+judge_chain: Runnable[DiagnosisResult, JudgeVerdict] = RunnableLambda(_judge).with_config(run_name="judge")

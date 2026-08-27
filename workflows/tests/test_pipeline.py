@@ -3,9 +3,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-import pytest
-
-from agent_workflows.agents.gate.agent import KNOWN_TASK_TYPES, gate_node
+from agent_workflows.agents.gate.agent import KNOWN_TASK_TYPES, gate_chain
 from agent_workflows.models.schemas import RawRecord
 from agent_workflows.pipeline.orchestrator import run_pipeline
 from agent_workflows.services.csv_loader import load_records
@@ -16,13 +14,13 @@ SAMPLE_CSV = DATA_DIR / "sample_extract.csv"
 
 def test_gate_accepts_known_task_type() -> None:
     record = RawRecord(policy_id="POL-X", task_type="12_11", raw={})
-    result = gate_node(record)
+    result = gate_chain.invoke(record)
     assert result.known is True
 
 
 def test_gate_rejects_unknown_task_type() -> None:
     record = RawRecord(policy_id="POL-X", task_type="99_99", raw={})
-    result = gate_node(record)
+    result = gate_chain.invoke(record)
     assert result.known is False
     assert "99_99" in result.reason
 

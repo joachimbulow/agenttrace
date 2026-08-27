@@ -13,29 +13,30 @@ real segmentation/locking-style checks described in
 docs/workflow_design.md -- it does not implement segmentation or the
 runtime locking mechanism.
 
-Each path is implemented as a genuinely concurrent coroutine (see
-`diagnose_node`, which `asyncio.gather`s all three) and proposes a
-correction (or "no issue found") with rationale + confidence, per the
-non-functional requirement that every step's output carries rationale and
-confidence rather than a bare pass/fail.
+Each path proposes a correction (or "no issue found") with rationale +
+confidence, per the non-functional requirement that every step's output
+carries rationale and confidence rather than a bare pass/fail. The three
+paths are composed via LCEL `RunnableParallel`, which runs them
+concurrently and gives each its own trace span nested under `diagnose`
+(see agents/enrich/agent.py for the same pattern, and utils/tracing.py for
+how nested spans are detected).
 """
 
 from __future__ import annotations
 
-import asyncio
 import re
 
-from agent_trace_sdk import trace_span
+from langchain_core.runnables import Runnable, RunnableLambda, RunnableParallel, RunnablePassthrough
 
 from agent_workflows.models.schemas import DiagnosisProposal, DiagnosisResult, EnrichmentResult
+from agent_workflows.utils.tracing import leaf
 
 # Placeholder "business rule": a plausible Danish-style plate format.
 # Stands in for a real segmentation/locking rule check (see module docstring).
 _PLATE_PATTERN = re.compile(r"^[A-Z]{2}\d{5}$")
 
 
-@trace_span(name="diagnose_dmr_path", span_type="step")
-async def _diagnose_from_dmr(enrichment: EnrichmentResult) -> DiagnosisProposal:
+def _diagnose_from_dmr(enrichment: EnrichmentResult) -> DiagnosisProposal:
     finding = enrichment.dmr
     if finding.status == "match":
         return DiagnosisProposal(
@@ -62,8 +63,7 @@ async def _diagnose_from_dmr(enrichment: EnrichmentResult) -> DiagnosisProposal:
     )
 
 
-@trace_span(name="diagnose_db2_path", span_type="step")
-async def _diagnose_from_db2(enrichment: EnrichmentResult) -> DiagnosisProposal:
+def _diagnose_from_db2(enrichment: EnrichmentResult) -> DiagnosisProposal:
     finding = enrichment.db2
     if finding.status == "match":
         return DiagnosisProposal(
@@ -90,8 +90,7 @@ async def _diagnose_from_db2(enrichment: EnrichmentResult) -> DiagnosisProposal:
     )
 
 
-@trace_span(name="diagnose_rules_path", span_type="step")
-async def _diagnose_from_rules(enrichment: EnrichmentResult) -> DiagnosisProposal:
+def _diagnose_from_rules(enrichment: EnrichmentResult) -> DiagnosisProposal:
     record = enrichment.gate.record
     plate = record.raw.get("plate_number", "")
     if _PLATE_PATTERN.match(plate):
@@ -111,15 +110,19 @@ async def _diagnose_from_rules(enrichment: EnrichmentResult) -> DiagnosisProposa
     )
 
 
-@trace_span(name="diagnose", span_type="step")
-async def diagnose_node(enrichment: EnrichmentResult) -> DiagnosisResult:
-    """Run the three diagnostic paths concurrently and converge their output."""
-    dmr_proposal, db2_proposal, rules_proposal = await asyncio.gather(
-        _diagnose_from_dmr(enrichment),
-        _diagnose_from_db2(enrichment),
-        _diagnose_from_rules(enrichment),
-    )
+def _merge(parts: dict) -> DiagnosisResult:
     return DiagnosisResult(
-        enrichment=enrichment,
-        proposals=(dmr_proposal, db2_proposal, rules_proposal),
+        enrichment=parts["enrichment"],
+        proposals=(parts["dmr"], parts["db2"], parts["rules"]),
     )
+
+
+diagnose_chain: Runnable[EnrichmentResult, DiagnosisResult] = (
+    RunnableParallel(
+        dmr=leaf(RunnableLambda(_diagnose_from_dmr), "diagnose_dmr_path"),
+        db2=leaf(RunnableLambda(_diagnose_from_db2), "diagnose_db2_path"),
+        rules=leaf(RunnableLambda(_diagnose_from_rules), "diagnose_rules_path"),
+        enrichment=RunnablePassthrough(),
+    )
+    | RunnableLambda(_merge)
+).with_config(run_name="diagnose")
