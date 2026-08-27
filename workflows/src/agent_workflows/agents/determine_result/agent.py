@@ -12,14 +12,18 @@ source team before relying on it for anything beyond this scaffold.
 
 from __future__ import annotations
 
-from agent_trace_sdk import trace_span
+from langchain_core.runnables import Runnable, RunnableLambda
 
 from agent_workflows.models.schemas import JudgeVerdict, ResultDecision
 
 CONFIDENCE_THRESHOLD = 0.75
 
 
-@trace_span(name="determine_result", span_type="step")
-def determine_result_node(verdict: JudgeVerdict) -> ResultDecision:
+def _determine_result(verdict: JudgeVerdict) -> ResultDecision:
     branch = "correct_validate" if verdict.confidence >= CONFIDENCE_THRESHOLD else "save_result"
     return ResultDecision(verdict=verdict, branch=branch, threshold=CONFIDENCE_THRESHOLD)
+
+
+determine_result_chain: Runnable[JudgeVerdict, ResultDecision] = RunnableLambda(
+    _determine_result
+).with_config(run_name="determine_result")

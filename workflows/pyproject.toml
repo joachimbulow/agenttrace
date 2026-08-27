@@ -1,12 +1,13 @@
 [project]
 name = "agent-workflows"
 version = "0.1.0"
-description = "PoC workflows: LangGraph-ready layout, Primo/Kogen data cleanup pipeline scaffold"
+description = "PoC workflows: LangGraph StateGraph pipeline, Primo/Kogen data cleanup scaffold"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "agent-trace-sdk",
     "langchain>=1.3.17",
+    "langgraph>=1.2.11",
 ]
 
 [project.scripts]
