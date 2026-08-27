@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 
-from agent_trace_sdk import Tracer
+from agent_trace_sdk import Tracer, set_current_span
 
 from agent_workflows.models.schemas import PipelineOutcome
 from agent_workflows.pipeline.orchestrator import run_pipeline
@@ -21,12 +21,18 @@ async def run_primo_kogen(csv_path: str) -> list[PipelineOutcome]:
     result: list[PipelineOutcome] | None = None
     try:
         # `Tracer.__enter__` creates the root span but doesn't push it as the
-        # ambient "current span"; entering it explicitly (the second
-        # `root_span` context) is what lets AgentTraceCallbackHandler's
-        # fallback (see utils/tracing.py) resolve each record's graph run as
-        # a child of this root instead of an orphaned top-level span.
-        with Tracer(name="primo_kogen_pipeline", endpoint=ingest_endpoint()) as root_span, root_span:
-            result = await run_pipeline(csv_path)
+        # ambient "current span"; pushing it explicitly via `set_current_span`
+        # (rather than entering the `Span` context manager a second time,
+        # which would end/export it twice) is what lets
+        # AgentTraceCallbackHandler's fallback (see utils/tracing.py) resolve
+        # each record's graph run as a child of this root instead of an
+        # orphaned top-level span.
+        with Tracer(name="primo_kogen_pipeline", endpoint=ingest_endpoint()) as root_span:
+            set_current_span(root_span)
+            try:
+                result = await run_pipeline(csv_path)
+            finally:
+                set_current_span(None)
         # The SDK schedules span export (and the final flush on __exit__) as
         # fire-and-forget tasks on the running loop rather than awaiting
         # them -- fine in a long-lived server, but in a short-lived CLI

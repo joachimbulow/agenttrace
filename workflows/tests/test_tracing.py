@@ -8,9 +8,10 @@ only indirectly through `PipelineOutcome` assertions.
 from __future__ import annotations
 
 import asyncio
+from collections import Counter
 from pathlib import Path
 
-from agent_trace_sdk import Tracer
+from agent_trace_sdk import Tracer, set_current_span
 from agent_trace_sdk.domain.interfaces import ExportBatch, IEventExporter
 
 from agent_workflows.pipeline.orchestrator import run_pipeline
@@ -39,8 +40,12 @@ class _CapturingExporter(IEventExporter):
 def _run_traced(csv_path: str) -> tuple[list, _CapturingExporter]:
     async def _run():
         exporter = _CapturingExporter()
-        with Tracer(name="test_run", exporter=exporter) as root_span, root_span:
-            outcomes = await run_pipeline(csv_path)
+        with Tracer(name="test_run", exporter=exporter) as root_span:
+            set_current_span(root_span)
+            try:
+                outcomes = await run_pipeline(csv_path)
+            finally:
+                set_current_span(None)
         # Span export is fire-and-forget on the running loop (see
         # workflows/primo_kogen.py) -- give pending export tasks a beat to
         # finish before inspecting what was captured.
@@ -58,15 +63,18 @@ def test_pipeline_run_produces_correctly_nested_spans() -> None:
     _, events, root_span = _run_traced(str(SAMPLE_CSV))
 
     starts = {e.span_id: e.data for e in events if e.event_type == "span_start"}
-    ends = {e.span_id for e in events if e.event_type == "span_end"}
+    end_counts = Counter(e.span_id for e in events if e.event_type == "span_end")
 
-    # Every started span ends -- no orphaned in-flight spans.
-    assert set(starts) == ends
+    # Every started span ends exactly once -- no orphaned in-flight spans and
+    # no duplicate span_end exports for the same span.
+    assert set(starts) == set(end_counts)
+    assert all(count == 1 for count in end_counts.values())
 
     names = [d["name"] for d in starts.values()]
     # One root-level record span per CSV row, correctly parented under the
-    # pipeline's root span (this is what primo_kogen.py's explicit
-    # `root_span` entry, not just `Tracer.__enter__`, makes possible).
+    # pipeline's root span (this is what pushing `root_span` as the ambient
+    # current span via `set_current_span`, not just `Tracer.__enter__`,
+    # makes possible).
     record_spans = [
         span_id for span_id, d in starts.items() if d["name"].startswith("primo_kogen_record[")
     ]
