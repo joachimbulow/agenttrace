@@ -12,9 +12,9 @@ The backend already stores a tree, not a flat log:
 - Read: `GET /api/v1/runs/{id}/tree` → `TraceNode` with `parent_id` (as children), `ended_at: null` while running
 - SDK already emits those events; they are just **batched** and the UI is **one-shot**
 
-The indented TraceTree in `frontend/src/components/TraceTree` is a presentation choice. The same payload can drive React Flow / xyflow.
+The indented TraceTree in `frontend/src/components/TraceTree` is a presentation choice. The same payload drives the growing-card canvas in [frontend-redesign.md](./frontend-redesign.md).
 
-This graph is the **execution tree** (this span caused that span). It is **not** LangGraph’s compiled DAG. For a client demo of “what is running now,” the run tree is the right view.
+This graph is the **execution tree** (this span caused that span). It is **not** LangGraph’s compiled DAG, and it is **not** a pre-drawn definition that lights up. For a client demo of “what is running now,” nodes spawn as work starts. Visual/UX contract (clean canvas, self-coded cards, nested packages, fluid size) lives in the redesign brief; this document is the data pipe.
 
 ## What exists today (gaps)
 
@@ -61,9 +61,9 @@ Reuse ingest event shapes. SSE payload example:
 
 Frontend reducer:
 
-- `span_start` → add node (status running), edge from `parent_id`
-- `span_end` → mark completed, set duration
-- `span_event` → attach to node details (do not relayout unless needed)
+- `span_start` → spawn a card (`running`). If the parent is a package (e.g. Enrich), insert as a nested card inside it; otherwise add a top-level node and an orthogonal edge from `parent_id`. Unspawned work stays absent.
+- `span_end` → mark completed, set duration; reflow only if measured size changed
+- `span_event` → attach to card details (do not relayout unless content size changed)
 - `run_status` → completed/failed, close SSE
 
 Initial snapshot: first SSE event or a normal `GET .../tree` then subscribe so late joiners are not empty.
@@ -91,18 +91,18 @@ Initial snapshot: first SSE event or a normal `GET .../tree` then subscribe so l
 
 **Where:** new `frontend/src/components/RunGraph/` next to TraceTree; keep the list as a fallback tab.
 
-- React Flow (xyflow) + dagre or the built-in tree layout from `parent_id`.
-- Node chrome: name, span_type color, spinner if `ended_at == null`.
-- Click node → existing DetailsPanel.
+- React Flow (xyflow) as a **dumb canvas** only — custom node types, custom orthogonal edges, hide default background / controls / minimap. Cards are self-coded (shadcn); see [frontend-redesign.md](./frontend-redesign.md).
+- Spawn, don’t pre-layout: `span_start` adds a node (or a nested card inside its package). Do not dagre the full DAG up front. Unspawned work is absent.
+- Nested agents (e.g. Enrich → DMR | DB2) render as cards *inside* the parent node, not as extra top-level nodes.
+- Nodes measure their content and update size; reflow on size change so fluid expand doesn’t overlap. Do not relayout the whole graph on a text-only `span_event`.
 - `EventSource` on `/api/v1/runs/{id}/events`; reconnect on error.
-- Do not relayout the whole graph on every event if possible (add node at a stable position).
 
 ### 4. Dummy workflow as the demo script
 
 **Where:** `workflows/` dummy wait — optionally two sequential wait nodes so the graph grows.
 
 - Run with backend + frontend up.
-- Open run → graph: root appears, child wait lights up, then completes.
+- Open run → graph: root card spawns, then the next card appears (nested or successor), then completed.
 
 ## Out of scope (unless a client asks)
 
@@ -131,6 +131,6 @@ Initial snapshot: first SSE event or a normal `GET .../tree` then subscribe so l
 
 ## Done when
 
-- Starting `uv run wait-flow --seconds 3` with UI open shows the root node, then a running `wait` child, then both completed, without refresh.
+- Starting `uv run wait-flow --seconds 3` with UI open shows the root card spawn, then a running `wait` child appear, then both completed, without refresh.
 - TraceTree list still works.
 - Backend down: workflow still finishes (export failure must not kill the run).

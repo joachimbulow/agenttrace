@@ -20,7 +20,6 @@ path is actually meant to check.
 """
 
 from __future__ import annotations
-
 from agent_trace_sdk import trace_span
 
 from agent_workflows.models.schemas import DiagnosisResult, JudgeVerdict
