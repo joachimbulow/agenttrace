@@ -1,7 +1,7 @@
 [project]
 name = "agent-workflows"
 version = "0.1.0"
-description = "PoC workflows: LangGraph StateGraph pipeline, Primo/Kogen data cleanup scaffold"
+description = "PoC workflows: LangGraph StateGraph pipeline, Primo data cleanup scaffold"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-primo-kogen-flow = "agent_workflows.__main__:main"
+primo-flow = "agent_workflows.__main__:main"
 
 [project.optional-dependencies]
 dev = [

@@ -7,7 +7,7 @@ from agent_workflows.workflows.primo_kogen import run_primo_kogen
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the Primo/Kogen data cleanup pipeline.")
+    parser = argparse.ArgumentParser(description="Run the Primo data cleanup pipeline.")
     parser.add_argument(
         "csv_path",
         nargs="?",

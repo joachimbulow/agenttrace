@@ -5,7 +5,7 @@ PoC package for agent graphs. The orchestrator is a real LangGraph
 through a LangChain callback handler (see `pipeline/orchestrator.py` and
 `utils/tracing.py`).
 
-The implemented flow is a **Primo/Kogen insurance data cleanup** scaffold:
+The implemented flow is a **Primo insurance data cleanup** scaffold:
 a 6-node pipeline (gate -> enrich -> diagnose -> judge -> determine result
 -> correct/save) with two parallel enrichment sub-agents and three parallel
 diagnostic paths. It is a quick, deliberately mocked scaffold meant to give
@@ -49,8 +49,8 @@ From this directory (AgentTrace backend on `:8000` if you want the UI):
 
 ```bash
 uv sync
-uv run primo-kogen-flow                       # uses data/sample_extract.csv
-uv run primo-kogen-flow data/sample_extract.csv
+uv run primo-flow                       # uses data/sample_extract.csv
+uv run primo-flow data/sample_extract.csv
 ```
 
 Traces export to `http://localhost:8000/api/v1/ingest/events` unless you set

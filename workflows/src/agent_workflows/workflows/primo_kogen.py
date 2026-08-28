@@ -1,4 +1,4 @@
-"""Primo/Kogen data cleanup pipeline. See pipeline/orchestrator.py for the
+"""Primo data cleanup pipeline. See pipeline/orchestrator.py for the
 graph shape and the carried-forward open questions/assumptions.
 """
 

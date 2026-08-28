@@ -2,7 +2,7 @@
 
 ## 0. Domain context
 
-- **Primo / Kogen**: legacy policy (Primo) and customer (Kogen) systems at If Insurance (post Topdanmark acquisition), being migrated to **Guidewire** (policy), **TopPro** (claims) and **ArkIf** (historic claims archive).
+- **Primo**: legacy policy system at If Insurance (post Topdanmark acquisition), being migrated to **Guidewire** (policy), **TopPro** (claims) and **ArkIf** (historic claims archive).
 - **DMR**: external reference register used to validate/align vehicle data (e.g. motor policies). It is the "source of truth" used to detect mismatches (wrong plate, wrong owner, stale vehicle data, etc.) in Primo records.
 - **DB2**: the production database behind Primo. Access is read-only, request-based (ServiceNow), and queries against it must respect production-time restrictions ("SQL must not run in production hours"). Second reference source, alongside DMR.
 - **Segmentation / Wave 2**: a daily batch job deciding which policies are candidates for migration ("Wave 2 marked") vs excluded. A related runtime locking mechanism mirrors segmentation but runs continuously.
