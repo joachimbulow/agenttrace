@@ -319,6 +319,31 @@ class SpanEventRepository(ISpanEventRepository):
         models = result.scalars().all()
         return [self._model_to_entity(m) for m in models]
 
+    async def list_by_nodes(self, node_ids: list[str]) -> dict[str, list[SpanEvent]]:
+        """List events for many nodes in a single query.
+
+        Args:
+            node_ids: Node identifiers to fetch events for.
+
+        Returns:
+            Map of node id to its events, ordered by timestamp. Nodes with
+            no events are absent from the map.
+        """
+        if not node_ids:
+            return {}
+
+        stmt = (
+            select(SpanEventModel)
+            .where(SpanEventModel.node_id.in_(node_ids))
+            .order_by(SpanEventModel.timestamp)
+        )
+        result = await self._session.execute(stmt)
+
+        by_node: dict[str, list[SpanEvent]] = {}
+        for model in result.scalars().all():
+            by_node.setdefault(model.node_id, []).append(self._model_to_entity(model))
+        return by_node
+
     def _model_to_entity(self, model: SpanEventModel) -> SpanEvent:
         """Convert ORM model to domain entity.
 

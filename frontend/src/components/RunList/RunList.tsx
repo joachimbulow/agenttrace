@@ -1,76 +1,62 @@
 import { useRuns } from '../../hooks/useRuns';
-import './RunList.css';
+import { RunListItem } from './RunListItem';
 
 export interface RunListProps {
   onSelectRun: (runId: string) => void;
   selectedRunId: string | null;
 }
 
+/**
+ * Run picker for the sidebar.
+ *
+ * A run is a container, not the thing you watch — pick one to get at its
+ * rows. See docs/decisions/0002-row-as-unit-of-observation.md.
+ *
+ * `useRuns` polls, so a run started from a terminal shows up on its own.
+ */
 export function RunList({ onSelectRun, selectedRunId }: RunListProps) {
   const { data, loading, error, refetch } = useRuns({ limit: 50 });
 
-  if (loading) {
-    return <div className="run-list-loading">Loading runs...</div>;
+  if (loading && !data) {
+    return <p className="px-3 py-2 text-xs text-muted-foreground">Loading runs…</p>;
   }
 
-  if (error) {
+  if (error && !data) {
     return (
-      <div className="run-list-error">
-        <p>Error: {error.message}</p>
-        <button onClick={() => refetch()}>Retry</button>
+      <div className="space-y-1.5 px-3 py-2">
+        <p className="text-xs text-[oklch(var(--destructive))]">{error.message}</p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="text-xs underline underline-offset-2 hover:no-underline"
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
   if (!data || data.runs.length === 0) {
     return (
-      <div className="run-list-empty">
-        <p>No runs found</p>
-        <p className="hint">Run your agent with tracing enabled to see traces here.</p>
+      <div className="space-y-1 px-3 py-2">
+        <p className="text-xs font-medium">No runs yet</p>
+        <p className="text-xs text-muted-foreground">
+          Start a traced agent and it will appear here.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="run-list">
-      <div className="run-list-header">
-        <h2>Runs ({data.total})</h2>
-        <button onClick={() => refetch()} className="refresh-btn">
-          Refresh
-        </button>
-      </div>
-      <table className="run-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Started</th>
-            <th>Duration</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.runs.map((run) => (
-            <tr
-              key={run.id}
-              className={`run-row ${selectedRunId === run.id ? 'selected' : ''}`}
-              onClick={() => onSelectRun(run.id)}
-            >
-              <td className="run-name">{run.name}</td>
-              <td>
-                <span className={`status-badge status-${run.status}`}>
-                  {run.status}
-                </span>
-              </td>
-              <td className="run-started">
-                {new Date(run.started_at).toLocaleString()}
-              </td>
-              <td className="run-duration">
-                {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(2)}s` : '-'}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="flex flex-col gap-0.5 px-1.5 py-1">
+      {data.runs.map((run) => (
+        <RunListItem
+          key={run.id}
+          run={run}
+          isSelected={selectedRunId === run.id}
+          onSelect={() => onSelectRun(run.id)}
+        />
+      ))}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { Run } from '../../types';
+import { cn } from '../../lib/utils';
 
 export interface RunListItemProps {
   run: Run;
@@ -6,26 +7,31 @@ export interface RunListItemProps {
   onSelect: () => void;
 }
 
+/**
+ * Compact run entry for the sidebar.
+ *
+ * Deliberately shows no status badge: run-level completion isn't tracked,
+ * so every run reports `running` forever and the badge would be a lie on
+ * every row. See docs/decisions/0004-defer-run-completion.md.
+ */
 export function RunListItem({ run, isSelected, onSelect }: RunListItemProps) {
   return (
-    <div
-      className={`run-list-item ${isSelected ? 'selected' : ''}`}
+    <button
+      type="button"
       onClick={onSelect}
+      aria-current={isSelected}
+      className={cn(
+        'flex w-full flex-col gap-0.5 rounded-md px-2.5 py-2 text-left transition-colors',
+        'hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        isSelected && 'bg-accent text-accent-foreground'
+      )}
     >
-      <div className="run-info">
-        <span className="run-name">{run.name}</span>
-        <span className={`status-badge status-${run.status}`}>
-          {run.status}
-        </span>
-      </div>
-      <div className="run-meta">
-        <span className="run-duration">
-          {run.duration_ms ? `${(run.duration_ms / 1000).toFixed(2)}s` : 'running'}
-        </span>
-        <span className="run-time">
-          {new Date(run.started_at).toLocaleTimeString()}
-        </span>
-      </div>
-    </div>
+      <span className="truncate text-sm font-medium" title={run.name}>
+        {run.name}
+      </span>
+      <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+        {new Date(run.started_at).toLocaleTimeString()}
+      </span>
+    </button>
   );
 }

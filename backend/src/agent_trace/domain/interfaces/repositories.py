@@ -102,3 +102,19 @@ class ISpanEventRepository(ABC):
     async def list_by_node(self, node_id: str) -> list[SpanEvent]:
         """List all events for a node."""
         ...
+
+    @abstractmethod
+    async def list_by_nodes(self, node_ids: list[str]) -> dict[str, list[SpanEvent]]:
+        """List events for many nodes in one query.
+
+        The row endpoints are refetched on every invalidation ping, so the
+        per-node query this replaces would run once per span per ping.
+
+        Args:
+            node_ids: Node identifiers to fetch events for.
+
+        Returns:
+            Map of node id to its events, ordered by timestamp. Nodes with
+            no events are absent from the map.
+        """
+        ...

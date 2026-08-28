@@ -1,5 +1,20 @@
 # Frontend redesign: graph view + CSV view (handoff)
 
+> **PARTIALLY SUPERSEDED.** The visual language here — quiet canvas, self-coded cards, spawn as
+> work arrives, no library node chrome — still stands and is what got built. Three points were
+> amended:
+>
+> - `docs/decisions/0003-layout-per-tick-over-incremental-spawn.md` — "do not dagre the full
+>   DAG, place nodes incrementally" is reversed. The client receives complete snapshots, so the
+>   whole tree is laid out each tick and positions animate.
+> - `docs/decisions/0002-row-as-unit-of-observation.md` — the canvas renders **one row**, not a
+>   run. Navigation is run list → row list → canvas; `RunList` survives rather than being retired.
+> - **Nested package cards and fluid content-driven resize are deferred.** Every span currently
+>   renders as a top-level card. The "Nested agents" and "Fluid size" sections below describe a
+>   later pass, not shipped behaviour.
+>
+> The Tailwind/shadcn migration flagged as a prerequisite has landed.
+
 **Status:** design direction confirmed — not started
 **Goal:** replace the current 3-pane trace debugger (run list / trace tree / details panel) with two new views — a growing agent-card graph on a clean canvas, and a standalone CSV data-grid.
 **Related:** [live-run-graph.md](./live-run-graph.md) is the backend/streaming plan (SSE, event bus) that feeds this graph. This document is the *visual/UX* contract. They converge on the same interaction: the canvas starts empty-of-work, the first node appears, and further nodes (and nested agent cards) spawn as the run proceeds.

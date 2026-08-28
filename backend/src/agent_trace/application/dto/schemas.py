@@ -176,6 +176,66 @@ class TraceTreeResponse(BaseModel):
     root: TraceNodeResponse | None = Field(None, description="Root node of the tree")
 
 
+# === Rows ===
+#
+# A row is one item of work travelling through the pipeline -- the unit the
+# graph canvas renders. It is a projection over spans, not a stored entity:
+# `row_id` IS the span id of the row's root span. See
+# docs/decisions/0002-row-as-unit-of-observation.md.
+
+
+class RowStatusSchema(str, Enum):
+    """Derived status of a row or a card.
+
+    Not persisted anywhere -- computed from the subtree on read.
+    """
+
+    RUNNING = "running"
+    COMPLETED = "completed"
+    ERROR = "error"
+
+
+class RowSummary(BaseModel):
+    """One row in the row list."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    row_id: str = Field(..., description="Row ID (the row root span's ID)")
+    run_id: str = Field(..., description="Run this row belongs to")
+    name: str = Field(..., description="Row root span name")
+    record_id: str | None = Field(None, description="Source record identifier, if stamped")
+    policy_id: str | None = Field(None, description="Source policy identifier, if stamped")
+    status: RowStatusSchema = Field(..., description="Derived status")
+    started_at: datetime = Field(..., description="Start timestamp")
+    ended_at: datetime | None = Field(None, description="End timestamp")
+    duration_ms: float | None = Field(None, description="Duration in milliseconds")
+    node_count: int = Field(..., description="Spans in this row's subtree, including the root")
+
+
+class RowListResponse(BaseModel):
+    """Response for GET /rows?run_id=..."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    run_id: str = Field(..., description="Run ID")
+    rows: list[RowSummary] = Field(default_factory=list, description="Rows in this run")
+
+
+class RowTreeResponse(BaseModel):
+    """Response for GET /rows/{row_id}.
+
+    Carries the full subtree including event payloads. Events are needed
+    inline because a card's `error` status exists only as an `error` event.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    row_id: str = Field(..., description="Row ID")
+    run_id: str = Field(..., description="Run this row belongs to")
+    status: RowStatusSchema = Field(..., description="Derived status")
+    root: TraceNodeResponse = Field(..., description="Row root span with its subtree")
+
+
 # === Health ===
 
 

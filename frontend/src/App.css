@@ -69,21 +69,50 @@ body {
 }
 
 .sidebar {
-  width: 320px;
+  width: 272px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
   background: oklch(var(--card));
   border-right: 1px solid oklch(var(--border));
-  overflow: auto;
+  overflow: hidden;
 }
 
-.trace-view {
-  width: 400px;
-  background: oklch(var(--card));
-  border-right: 1px solid oklch(var(--border));
-  overflow: auto;
+/* Runs get an intrinsic, capped height; rows take whatever is left, since
+   a run has many more rows than there are runs on screen. */
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: 40%;
+  border-bottom: 1px solid oklch(var(--border));
 }
 
-.details-view {
+.sidebar-section-grow {
   flex: 1;
-  background: oklch(var(--card));
+  max-height: none;
+  border-bottom: none;
+}
+
+.sidebar-title {
+  flex-shrink: 0;
+  padding: 10px 12px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: oklch(var(--muted-foreground));
+}
+
+.sidebar-body {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
+}
+
+.graph-view {
+  flex: 1;
+  min-width: 0;
+  background: oklch(var(--background));
+  overflow: hidden;
 }

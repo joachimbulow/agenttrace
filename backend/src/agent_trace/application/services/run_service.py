@@ -126,8 +126,25 @@ class RunService:
             events = await self._event_repo.list_by_node(node.id)
             node_events[node.id] = events
 
-        # Convert to response (use first root if multiple exist)
-        root_response = self._node_to_response(roots[0], node_events)
+        # A run can legitimately have several roots -- the workflow's
+        # per-record graph invocations detach into their own roots if the
+        # tracer's root span is missing. Picking roots[0] silently hid
+        # them, so wrap multiple roots in a synthetic parent instead.
+        if len(roots) == 1:
+            root_response = self._node_to_response(roots[0], node_events)
+        else:
+            first = min(roots, key=lambda n: n.started_at)
+            root_response = TraceNodeResponse(
+                id=run_id,
+                name=run.name,
+                span_type=SpanTypeSchema.AGENT_RUN,
+                started_at=first.started_at,
+                ended_at=None,
+                duration_ms=None,
+                attributes={"synthetic_root": True},
+                children=[self._node_to_response(r, node_events) for r in roots],
+                events=[],
+            )
 
         return TraceTreeResponse(run_id=run_id, root=root_response)
 

@@ -20,10 +20,10 @@ AgentTrace gives step-by-step visibility into AI agent execution during local de
 
 The product is moving from a post-hoc trace debugger toward a real-time agent visualization framework. The frontend is being rebuilt around two primary views, replacing the original run-list/trace-tree/details-panel layout:
 
-- **Agent graph view**: a clean canvas of self-coded cards (not a circuit-board / electrical look, not a pre-drawn workflow definition). The graph starts with the first node and grows as the next unit of work spawns; nodes fluidly expand to fit their content. A node can contain nested agent cards (e.g. an Enrich package holding DMR and DB2). First iteration may still be driven by a completed-run snapshot — the backend does not yet stream, it batches and posts after the run completes — but the view is built as spawn-and-grow, not as a static fully-laid-out DAG.
+- **Agent graph view**: a clean canvas of self-coded cards (not a circuit-board / electrical look, not a pre-drawn workflow definition). The canvas renders **one row** — a single item of work travelling through the pipeline — not a whole run. The graph starts with the first node and grows as the next unit of work spawns. It is fed live by SSE invalidation pings (see `docs/decisions/0001-invalidation-bus-over-event-stream.md`).
 - **CSV data view**: a standalone, generic data-grid feature — load any CSV and view it as a clean, sortable/filterable table. Not tied to trace/graph data; a general-purpose table viewer inside the same shell.
 
-Both views ship iteratively: the card/canvas model is the first pass; real SSE/live push is the next (see `plans/live-run-graph.md`). Design and build should leave room for that trajectory rather than treating the first pass as a static showcase.
+Nested agent cards (an Enrich package holding DMR and DB2) and fluid content-driven card resize are deliberately deferred past the first live pass; every span currently renders as a top-level card.
 
 ## Positioning
 
@@ -32,19 +32,20 @@ Existing observability tools (Langfuse, LangSmith, etc.) are built for productio
 ## Operating Context
 
 - Developer runs their agent code (Python, optionally LangChain) instrumented with the AgentTrace SDK (`@trace_agent_run` decorator or `Tracer` context manager).
-- Spans are batched and exported over HTTP to a local AgentTrace backend (FastAPI + async SQLAlchemy + SQLite).
-- Developer opens the web UI (React + TS) to browse: a run list (name, timestamps, duration, status), a trace tree (expand/collapse spans: `agent_run`, `step`, `tool_call`, `llm_call`), and a details panel (span type, timing, attributes, events — prompts/responses/errors).
-- Typical loop: run agent → see something wrong → open UI → drill into the trace tree → inspect the offending span's details.
+- Spans are exported over HTTP to a local AgentTrace backend (FastAPI + async SQLAlchemy + SQLite). The SDK flushes on every `span_start` / `span_end`, so events land within milliseconds rather than after the run finishes.
+- Developer opens the web UI (React + TS) and navigates run list → row list → graph canvas. The canvas subscribes to `GET /api/v1/rows/{row_id}/events` and refetches that row whenever the backend signals a change.
+- Typical loop: run agent → see something wrong → open UI → find the row → watch or inspect the offending card.
 - Whole stack usually runs locally via Docker Compose (backend :8000, frontend :3000) or via local dev servers.
 
 ## Capabilities and Constraints
 
 - Local-first architecture: SQLite database, no Postgres or external services required.
 - Clean/hexagonal backend architecture: domain layer decoupled from infrastructure; repository pattern intended to allow swapping storage later.
-- Current implemented UI surfaces (being replaced): run list, trace tree, details panel.
-- New frontend direction (in progress): an agent graph view (clean canvas, self-coded cards that spawn as work starts, nested agent cards inside packages) and a standalone CSV data-grid view. First iteration may replay a finished tree as spawn-and-grow; live streaming is planned but not yet backed by the API (SDK currently batches and posts after a run completes — no WebSocket/SSE push exists today).
-- Roadmap items (not implemented): live streaming updates to the graph view, timeline/waterfall view, filtering/search across runs, run comparison/diff, evaluation scoring, Postgres backend, JSON export.
-- Terminology: "run" (a traced agent execution), "span" (a unit of work within a run: `agent_run`, `step`, `tool_call`, `llm_call`), "event" (custom data attached to a span, e.g. `input`/`output`/`error`), "attribute" (key-value metadata on a span), "graph node" (a card on the canvas — appears when that work starts; may be a package containing nested agent cards). Distinct from a span, which is the recorded execution unit that *feeds* the card.
+- Current UI surfaces: run list, row list, live graph canvas. The trace tree and details panel have been retired.
+- Live updates are backed by an in-process invalidation bus and SSE. Single backend process only — running multiple uvicorn workers breaks fan-out, since ingest and the stream would land on different workers.
+- **Run-level completion is not tracked.** Every run reads `running` regardless of whether it finished; see `docs/decisions/0004-defer-run-completion.md`. Per-card and per-row status (`running` / `completed` / `error`) are accurate.
+- Roadmap items (not implemented): run completion + stale-run sweeping, nested package cards, fluid card resize, timeline/waterfall view, filtering/search across runs, run comparison/diff, evaluation scoring, Postgres backend, JSON export.
+- Terminology: see `docs/glossary.md`. The load-bearing distinction is **run** (one execution of an instrumented program — the whole CSV) versus **row** (one item of work through the pipeline — one CSV record). The canvas renders a row; a run is a container you navigate through.
 
 ## Brand Commitments
 

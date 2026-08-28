@@ -61,6 +61,55 @@ export interface TraceTreeResponse {
   root: TraceNode | null;
 }
 
+// === Rows ===
+//
+// A row is one item of work through the pipeline — the unit the canvas
+// renders. It is a projection over spans: `row_id` IS the row root span's
+// id. See docs/decisions/0002-row-as-unit-of-observation.md.
+
+export enum RowStatus {
+  RUNNING = 'running',
+  COMPLETED = 'completed',
+  ERROR = 'error',
+}
+
+export interface RowSummary {
+  row_id: string;
+  run_id: string;
+  name: string;
+  record_id: string | null;
+  policy_id: string | null;
+  status: RowStatus;
+  started_at: string;
+  ended_at: string | null;
+  duration_ms: number | null;
+  node_count: number;
+}
+
+export interface RowListResponse {
+  run_id: string;
+  rows: RowSummary[];
+}
+
+export interface RowTreeResponse {
+  row_id: string;
+  run_id: string;
+  status: RowStatus;
+  root: TraceNode;
+}
+
+/**
+ * One invalidation ping. Carries no span data — it means only "this row
+ * changed, refetch it". See ADR-0001.
+ */
+export interface RowInvalidation {
+  row_id: string;
+  run_id: string;
+  rev: number;
+  /** True for a periodic liveness frame carrying no new revision. */
+  heartbeat: boolean;
+}
+
 export interface IngestRequest {
   run_id: string;
   run_name?: string;

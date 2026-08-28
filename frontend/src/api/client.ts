@@ -3,6 +3,8 @@
 import type {
   Run,
   RunListResponse,
+  RowListResponse,
+  RowTreeResponse,
   TraceTreeResponse,
   IngestRequest,
   IngestResponse,
@@ -10,6 +12,19 @@ import type {
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+
+/**
+ * Absolute URL for an endpoint, for consumers that can't go through
+ * `fetchApi` — notably `EventSource`, which takes a URL, not a request.
+ *
+ * Deliberately derived from the same base: docker-compose sets
+ * VITE_API_URL to the host without the /api/v1 suffix the default has, so
+ * hand-concatenating a stream URL elsewhere would work in dev and break in
+ * Docker.
+ */
+export function apiUrl(endpoint: string): string {
+  return `${API_BASE_URL}${endpoint}`;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -65,7 +80,7 @@ export async function listRuns(params: {
 
 export async function getRun(runId: string): Promise<Run | null> {
   try {
-    return fetchApi<Run>(`/runs/${runId}`);
+    return await fetchApi<Run>(`/runs/${runId}`);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       return null;
@@ -78,13 +93,35 @@ export async function getRunTree(
   runId: string
 ): Promise<TraceTreeResponse | null> {
   try {
-    return fetchApi<TraceTreeResponse>(`/runs/${runId}/tree`);
+    return await fetchApi<TraceTreeResponse>(`/runs/${runId}/tree`);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       return null;
     }
     throw error;
   }
+}
+
+// === Row API ===
+
+export async function listRows(runId: string): Promise<RowListResponse> {
+  return fetchApi(`/rows?run_id=${encodeURIComponent(runId)}`);
+}
+
+export async function getRow(rowId: string): Promise<RowTreeResponse | null> {
+  try {
+    return await fetchApi<RowTreeResponse>(`/rows/${encodeURIComponent(rowId)}`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/** URL of a row's invalidation stream, for `new EventSource(...)`. */
+export function rowEventsUrl(rowId: string): string {
+  return apiUrl(`/rows/${encodeURIComponent(rowId)}/events`);
 }
 
 // === Ingest API ===

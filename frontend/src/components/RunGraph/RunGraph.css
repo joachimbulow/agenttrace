@@ -1,0 +1,50 @@
+/* Canvas chrome. React Flow ships opinionated defaults; these quiet them
+   down so the cards carry the whole visual weight. */
+
+.agenttrace-canvas {
+  background: oklch(var(--background));
+}
+
+.agenttrace-bg {
+  color: oklch(var(--border) / 0.55);
+}
+
+.agenttrace-edge .react-flow__edge-path {
+  stroke: oklch(var(--border));
+}
+
+.dark .agenttrace-edge .react-flow__edge-path {
+  stroke: oklch(var(--muted-foreground) / 0.45);
+}
+
+/* Nodes glide when a sibling appears and the tidy-tree shifts them. The
+   growth is the signature, so it must read as motion, not a redraw. */
+.agenttrace-canvas .react-flow__node {
+  transition: transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Spawn: a card that did not exist on the previous tick. */
+.agenttrace-spawn {
+  animation: agenttrace-spawn-in 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+@keyframes agenttrace-spawn-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agenttrace-canvas .react-flow__node {
+    transition: none;
+  }
+
+  .agenttrace-spawn {
+    animation: none;
+  }
+}
