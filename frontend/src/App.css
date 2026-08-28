@@ -29,16 +29,37 @@ body {
   box-shadow: 0 1px 0 oklch(0.32 0.14 288), 0 4px 12px -6px oklch(0.2 0.1 288 / 0.6);
 }
 
+/* Dark mode: the header becomes a neutral, elevated surface — the brand hue
+   stays a rare accent (title + underline) instead of a full bright fill. */
+.dark .app-header {
+  background: oklch(var(--card));
+  color: oklch(var(--foreground));
+  border-bottom: 1px solid oklch(var(--primary) / 0.4);
+  box-shadow: none;
+}
+
 .app-header h1 {
   font-size: 20px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
+.dark .app-header h1 {
+  color: oklch(var(--primary));
+}
+
 .version {
   font-size: 12px;
   color: oklch(var(--primary-foreground) / 0.65);
   font-variant-numeric: tabular-nums;
+}
+
+.dark .version {
+  color: oklch(var(--muted-foreground));
+}
+
+.header-spacer {
+  flex: 1;
 }
 
 .app-main {

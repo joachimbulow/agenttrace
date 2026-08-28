@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { RunList } from './components/RunList/RunList';
 import { TraceTree } from './components/TraceTree/TraceTree';
 import { DetailsPanel } from './components/DetailsPanel/DetailsPanel';
+import { ThemeToggle } from './components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import './App.css';
 
@@ -14,7 +15,9 @@ function App() {
       <header className="app-header">
         <h1>Agent Trace</h1>
         <span className="version">v0.1.0</span>
+        <div className="header-spacer" />
         <Button size="sm" variant="secondary">shadcn/ui ready</Button>
+        <ThemeToggle />
       </header>
 
       <main className="app-main">

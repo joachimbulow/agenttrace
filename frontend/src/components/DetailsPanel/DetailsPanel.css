@@ -100,7 +100,6 @@
   background: oklch(var(--muted));
   border-radius: 4px;
   padding: 12px;
-  border-left: 2px solid oklch(var(--border));
 }
 
 .event-header {
