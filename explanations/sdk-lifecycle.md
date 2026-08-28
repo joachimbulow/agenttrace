@@ -28,7 +28,7 @@ One **run** is a tree of **spans**. Each span is a unit of work (`agent_run`, `s
 ```mermaid
 flowchart TD
     root["primo_cleanup_pipeline<br/>agent_run"]
-    rec["primo_kogen_record[P1]<br/>agent_run"]
+    rec["primo_record[P1]<br/>agent_run"]
     gate["gate<br/>step"]
     enrich["enrich<br/>step"]
     dmr["dmr_subagent<br/>step"]

@@ -109,7 +109,7 @@ async def _seed_two_records(client: AsyncClient, run_id: str = "run-1") -> str:
             _span_start("root", "primo_cleanup_pipeline", span_type="agent_run", at=0),
             _span_start(
                 "record-a",
-                "primo_kogen_record[REC-1]",
+                "primo_record[REC-1]",
                 parent_id="root",
                 span_type="agent_run",
                 at=1,
@@ -120,7 +120,7 @@ async def _seed_two_records(client: AsyncClient, run_id: str = "run-1") -> str:
             _span_end("record-a", at=4),
             _span_start(
                 "record-b",
-                "primo_kogen_record[REC-2]",
+                "primo_record[REC-2]",
                 parent_id="root",
                 span_type="agent_run",
                 at=1.5,

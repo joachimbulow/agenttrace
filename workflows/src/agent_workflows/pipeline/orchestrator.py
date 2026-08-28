@@ -135,7 +135,7 @@ async def _run_record(record: RawRecord) -> PipelineOutcome:
         {"record": record},
         config={
             "callbacks": [agent_trace_callback_handler],
-            "run_name": f"primo_kogen_record[{record.record_id}]",
+            "run_name": f"primo_record[{record.record_id}]",
             "metadata": {
                 "record_id": record.record_id,
                 "policy_id": record.policy_id,
@@ -151,7 +151,7 @@ async def run_pipeline(csv_path: str) -> list[PipelineOutcome]:
 
     Records are processed concurrently (each gets its own graph run); this
     doesn't change the per-record graph shape described above, and each
-    record's spans nest under its own `primo_kogen_record[<record_id>]`
+    record's spans nest under its own `primo_record[<record_id>]`
     span rather than being interleaved flat under the pipeline root.
     """
     records = load_records(csv_path)

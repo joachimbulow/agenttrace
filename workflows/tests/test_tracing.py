@@ -71,7 +71,7 @@ def test_pipeline_run_produces_correctly_nested_spans() -> None:
     # pipeline's root span (Tracer.__enter__/__aenter__ pushes the root as
     # the ambient current span).
     record_spans = [
-        span_id for span_id, d in starts.items() if d["name"].startswith("primo_kogen_record[")
+        span_id for span_id, d in starts.items() if d["name"].startswith("primo_record[")
     ]
     assert len(record_spans) == 7
     for span_id in record_spans:

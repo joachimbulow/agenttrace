@@ -38,7 +38,7 @@ src/agent_workflows/
     staging_service.py    staging + HITL queue writes (# MOCK)
     csv_loader.py          real (not mocked) local CSV read
   utils/       tracing config, helpers
-  workflows/   compose the pipeline into one traced run (primo_kogen.py)
+  workflows/   compose the pipeline into one traced run (primo.py)
 data/
   sample_extract.csv     tiny synthetic fixture for local runs
 docs/
