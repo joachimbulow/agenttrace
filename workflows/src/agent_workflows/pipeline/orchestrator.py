@@ -1,7 +1,8 @@
 """Control-flow ONLY -- wires the pipeline's nodes into a LangGraph
 `StateGraph`, no business logic. All the actual "what does this mean"
 logic lives in `agent_workflows.agents.*` and `agent_workflows.services.*`,
-each exposed as an LCEL `Runnable` (see those modules).
+each exposed as an LCEL `Runnable` (see those modules). Graph nodes
+(`*_node`) live next to their agent chain; this module only wires them.
 
 Graph shape:
 
@@ -29,11 +30,11 @@ above is built and traced, as opposed to *what* it does:
    own LCEL `RunnableParallel` composition (see agents/enrich/agent.py,
    agents/diagnose/agent.py).
 
-2. Every node function below forwards the `config` LangGraph passes it
-   into the corresponding agent chain's `.ainvoke(input, config)` call.
-   This is required, not cosmetic: `config` carries the callback manager
-   that links a chain run to its parent in the trace tree. Drop it (e.g.
-   call `.ainvoke(input)` with no config) and that sub-agent still runs
+2. Every agent node forwards the `config` LangGraph passes it into the
+   corresponding agent chain's `.ainvoke(input, config)` call. This is
+   required, not cosmetic: `config` carries the callback manager that
+   links a chain run to its parent in the trace tree. Drop it (e.g. call
+   `.ainvoke(input)` with no config) and that sub-agent still runs
    correctly, but its span silently detaches into its own untraced root
    instead of nesting under this node.
 
@@ -67,91 +68,20 @@ choice about how "conflict" is defined between the DMR and DB2 paths.
 from __future__ import annotations
 
 import asyncio
-from typing import TypedDict
 
-from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, StateGraph
 
-from agent_workflows.agents.correct_validate.agent import correct_validate_chain
-from agent_workflows.agents.determine_result.agent import determine_result_chain
-from agent_workflows.agents.diagnose.agent import diagnose_chain
-from agent_workflows.agents.enrich.agent import enrich_chain
-from agent_workflows.agents.gate.agent import gate_chain
-from agent_workflows.agents.judge.agent import judge_chain
-from agent_workflows.agents.save_result.agent import save_result_chain
-from agent_workflows.models.schemas import (
-    DiagnosisResult,
-    EnrichmentResult,
-    GateResult,
-    JudgeVerdict,
-    PipelineOutcome,
-    RawRecord,
-    ResultDecision,
-)
+from agent_workflows.agents.correct_validate.agent import correct_validate_node
+from agent_workflows.agents.determine_result.agent import determine_result_node
+from agent_workflows.agents.diagnose.agent import diagnose_node
+from agent_workflows.agents.enrich.agent import enrich_node
+from agent_workflows.agents.gate.agent import gate_node, reject_node
+from agent_workflows.agents.judge.agent import judge_node
+from agent_workflows.agents.save_result.agent import save_result_node
+from agent_workflows.models.schemas import PipelineOutcome, RawRecord
+from agent_workflows.pipeline.state import PipelineState
 from agent_workflows.services.csv_loader import load_records
 from agent_workflows.utils.tracing import agent_trace_callback_handler
-
-
-class PipelineState(TypedDict, total=False):
-    """State threaded through the graph for one record. Each key is
-    written by exactly one node, so no custom reducers are needed."""
-
-    record: RawRecord
-    gate: GateResult
-    enrichment: EnrichmentResult
-    diagnosis: DiagnosisResult
-    verdict: JudgeVerdict
-    decision: ResultDecision
-    outcome: PipelineOutcome
-
-
-async def _gate_step(state: PipelineState, config: RunnableConfig) -> dict:
-    gate = await gate_chain.ainvoke(state["record"], config)
-    return {"gate": gate}
-
-
-def _reject_step(state: PipelineState) -> dict:
-    gate = state["gate"]
-    return {
-        "outcome": PipelineOutcome(
-            policy_id=gate.record.policy_id,
-            task_type=gate.record.task_type,
-            known=False,
-            branch=None,
-            confidence=None,
-            summary=gate.reason,
-        )
-    }
-
-
-async def _enrich_step(state: PipelineState, config: RunnableConfig) -> dict:
-    enrichment = await enrich_chain.ainvoke(state["gate"], config)
-    return {"enrichment": enrichment}
-
-
-async def _diagnose_step(state: PipelineState, config: RunnableConfig) -> dict:
-    diagnosis = await diagnose_chain.ainvoke(state["enrichment"], config)
-    return {"diagnosis": diagnosis}
-
-
-async def _judge_step(state: PipelineState, config: RunnableConfig) -> dict:
-    verdict = await judge_chain.ainvoke(state["diagnosis"], config)
-    return {"verdict": verdict}
-
-
-async def _determine_result_step(state: PipelineState, config: RunnableConfig) -> dict:
-    decision = await determine_result_chain.ainvoke(state["verdict"], config)
-    return {"decision": decision}
-
-
-async def _correct_validate_step(state: PipelineState, config: RunnableConfig) -> dict:
-    outcome = await correct_validate_chain.ainvoke(state["decision"], config)
-    return {"outcome": outcome}
-
-
-async def _save_result_step(state: PipelineState, config: RunnableConfig) -> dict:
-    outcome = await save_result_chain.ainvoke(state["decision"], config)
-    return {"outcome": outcome}
 
 
 def _route_known(state: PipelineState) -> str:
@@ -164,14 +94,14 @@ def _route_branch(state: PipelineState) -> str:
 
 def _build_graph() -> StateGraph:
     builder = StateGraph(PipelineState)
-    builder.add_node("gate", _gate_step, metadata={"span_type": "step"})
-    builder.add_node("reject", _reject_step, metadata={"span_type": "step"})
-    builder.add_node("enrich", _enrich_step, metadata={"span_type": "step"})
-    builder.add_node("diagnose", _diagnose_step, metadata={"span_type": "step"})
-    builder.add_node("judge", _judge_step, metadata={"span_type": "llm_call"})
-    builder.add_node("determine_result", _determine_result_step, metadata={"span_type": "step"})
-    builder.add_node("correct_validate", _correct_validate_step, metadata={"span_type": "step"})
-    builder.add_node("save_result", _save_result_step, metadata={"span_type": "step"})
+    builder.add_node("gate", gate_node, metadata={"span_type": "step"})
+    builder.add_node("reject", reject_node, metadata={"span_type": "step"})
+    builder.add_node("enrich", enrich_node, metadata={"span_type": "step"})
+    builder.add_node("diagnose", diagnose_node, metadata={"span_type": "step"})
+    builder.add_node("judge", judge_node, metadata={"span_type": "llm_call"})
+    builder.add_node("determine_result", determine_result_node, metadata={"span_type": "step"})
+    builder.add_node("correct_validate", correct_validate_node, metadata={"span_type": "step"})
+    builder.add_node("save_result", save_result_node, metadata={"span_type": "step"})
 
     builder.set_entry_point("gate")
     builder.add_conditional_edges("gate", _route_known, {"enrich": "enrich", "reject": "reject"})
@@ -186,6 +116,7 @@ def _build_graph() -> StateGraph:
     builder.add_edge("reject", END)
     builder.add_edge("correct_validate", END)
     builder.add_edge("save_result", END)
+
     return builder.compile()
 
 

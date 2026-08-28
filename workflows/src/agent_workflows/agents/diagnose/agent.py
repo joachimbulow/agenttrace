@@ -26,9 +26,16 @@ from __future__ import annotations
 
 import re
 
-from langchain_core.runnables import Runnable, RunnableLambda, RunnableParallel, RunnablePassthrough
+from langchain_core.runnables import (
+    Runnable,
+    RunnableConfig,
+    RunnableLambda,
+    RunnableParallel,
+    RunnablePassthrough,
+)
 
 from agent_workflows.models.schemas import DiagnosisProposal, DiagnosisResult, EnrichmentResult
+from agent_workflows.pipeline.state import PipelineState
 from agent_workflows.utils.tracing import leaf
 
 # Placeholder "business rule": a plausible Danish-style plate format.
@@ -126,3 +133,8 @@ diagnose_chain: Runnable[EnrichmentResult, DiagnosisResult] = (
     )
     | RunnableLambda(_merge)
 ).with_config(run_name="diagnose")
+
+
+async def diagnose_node(state: PipelineState, config: RunnableConfig) -> dict:
+    diagnosis = await diagnose_chain.ainvoke(state["enrichment"], config)
+    return {"diagnosis": diagnosis}

@@ -7,9 +7,10 @@ services/staging_service.py, marked `# MOCK` there.
 
 from __future__ import annotations
 
-from langchain_core.runnables import Runnable, RunnableLambda
+from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import PipelineOutcome, ResultDecision
+from agent_workflows.pipeline.state import PipelineState
 from agent_workflows.services import staging_service
 
 
@@ -43,3 +44,8 @@ def _correct_validate(decision: ResultDecision) -> PipelineOutcome:
 correct_validate_chain: Runnable[ResultDecision, PipelineOutcome] = RunnableLambda(
     _correct_validate
 ).with_config(run_name="correct_validate")
+
+
+async def correct_validate_node(state: PipelineState, config: RunnableConfig) -> dict:
+    outcome = await correct_validate_chain.ainvoke(state["decision"], config)
+    return {"outcome": outcome}

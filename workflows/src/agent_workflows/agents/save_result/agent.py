@@ -8,9 +8,10 @@ here -- this path is never skipped for low-confidence/conflicted cases.
 
 from __future__ import annotations
 
-from langchain_core.runnables import Runnable, RunnableLambda
+from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import PipelineOutcome, ResultDecision
+from agent_workflows.pipeline.state import PipelineState
 from agent_workflows.services import staging_service
 
 
@@ -48,3 +49,8 @@ def _save_result(decision: ResultDecision) -> PipelineOutcome:
 save_result_chain: Runnable[ResultDecision, PipelineOutcome] = RunnableLambda(
     _save_result
 ).with_config(run_name="save_result")
+
+
+async def save_result_node(state: PipelineState, config: RunnableConfig) -> dict:
+    outcome = await save_result_chain.ainvoke(state["decision"], config)
+    return {"outcome": outcome}
