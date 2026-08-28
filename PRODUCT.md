@@ -20,7 +20,7 @@ AgentTrace gives step-by-step visibility into AI agent execution during local de
 
 The product is moving from a post-hoc trace debugger toward a real-time agent visualization framework. The frontend is being rebuilt around two primary views, replacing the original run-list/trace-tree/details-panel layout:
 
-- **Agent graph view**: a clean canvas of self-coded cards (not a circuit-board / electrical look, not a pre-drawn workflow definition). The canvas renders **one row** — a single item of work travelling through the pipeline — not a whole run. The graph starts with the first node and grows as the next unit of work spawns. It is fed live by SSE invalidation pings (see `docs/decisions/0001-invalidation-bus-over-event-stream.md`).
+- **Agent graph view**: a clean canvas of self-coded cards (not a circuit-board / electrical look, not a pre-drawn workflow definition). The canvas renders **one record** — a single item of work travelling through the pipeline — not a whole run. The graph starts with the first node and grows as the next unit of work spawns. It is fed live by SSE invalidation pings (see `docs/decisions/0001-invalidation-bus-over-event-stream.md`).
 - **CSV data view**: a standalone, generic data-grid feature — load any CSV and view it as a clean, sortable/filterable table. Not tied to trace/graph data; a general-purpose table viewer inside the same shell.
 
 Nested agent cards (an Enrich package holding DMR and DB2) and fluid content-driven card resize are deliberately deferred past the first live pass; every span currently renders as a top-level card.
@@ -33,19 +33,19 @@ Existing observability tools (Langfuse, LangSmith, etc.) are built for productio
 
 - Developer runs their agent code (Python, optionally LangChain) instrumented with the AgentTrace SDK (`@trace_agent_run` decorator or `Tracer` context manager).
 - Spans are exported over HTTP to a local AgentTrace backend (FastAPI + async SQLAlchemy + SQLite). The SDK flushes on every `span_start` / `span_end`, so events land within milliseconds rather than after the run finishes.
-- Developer opens the web UI (React + TS) and navigates run list → row list → graph canvas. The canvas subscribes to `GET /api/v1/rows/{row_id}/events` and refetches that row whenever the backend signals a change.
-- Typical loop: run agent → see something wrong → open UI → find the row → watch or inspect the offending card.
+- Developer opens the web UI (React + TS) and navigates run list → record list → graph canvas. The canvas subscribes to `GET /api/v1/records/{record_id}/events` and refetches that record whenever the backend signals a change.
+- Typical loop: run agent → see something wrong → open UI → find the record → watch or inspect the offending card.
 - Whole stack usually runs locally via Docker Compose (backend :8000, frontend :3000) or via local dev servers.
 
 ## Capabilities and Constraints
 
 - Local-first architecture: SQLite database, no Postgres or external services required.
 - Clean/hexagonal backend architecture: domain layer decoupled from infrastructure; repository pattern intended to allow swapping storage later.
-- Current UI surfaces: run list, row list, live graph canvas. The trace tree and details panel have been retired.
+- Current UI surfaces: run list, record list, live graph canvas. The trace tree and details panel have been retired.
 - Live updates are backed by an in-process invalidation bus and SSE. Single backend process only — running multiple uvicorn workers breaks fan-out, since ingest and the stream would land on different workers.
-- **Run-level completion is not tracked.** Every run reads `running` regardless of whether it finished; see `docs/decisions/0004-defer-run-completion.md`. Per-card and per-row status (`running` / `completed` / `error`) are accurate.
+- **Run-level completion is not tracked.** Every run reads `running` regardless of whether it finished; see `docs/decisions/0004-defer-run-completion.md`. Per-card and per-record status (`running` / `completed` / `error`) are accurate.
 - Roadmap items (not implemented): run completion + stale-run sweeping, nested package cards, fluid card resize, timeline/waterfall view, filtering/search across runs, run comparison/diff, evaluation scoring, Postgres backend, JSON export.
-- Terminology: see `docs/glossary.md`. The load-bearing distinction is **run** (one execution of an instrumented program — the whole CSV) versus **row** (one item of work through the pipeline — one CSV record). The canvas renders a row; a run is a container you navigate through.
+- Terminology: see `docs/glossary.md`. The load-bearing distinction is **run** (one execution of an instrumented program — the whole CSV) versus **record** (one item of work through the pipeline — one CSV record). The canvas renders a record; a run is a container you navigate through.
 
 ## Brand Commitments
 

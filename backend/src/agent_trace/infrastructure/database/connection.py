@@ -1,12 +1,31 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from .models import Base
+
+
+def _ensure_sqlite_parent_dir(database_url: str) -> None:
+    """Create the parent directory for a SQLite file database.
+
+    SQLite creates the database file itself but fails if the parent
+    directory does not already exist.
+    """
+    url = make_url(database_url)
+    if not url.drivername.startswith("sqlite"):
+        return
+    database = url.database
+    if not database or database == ":memory:":
+        return
+    parent = Path(database).parent
+    if parent != Path("."):
+        parent.mkdir(parents=True, exist_ok=True)
 
 
 class Database:
@@ -20,6 +39,7 @@ class Database:
         """
         # For SQLite, we need StaticPool for same-thread usage
         if "sqlite" in database_url:
+            _ensure_sqlite_parent_dir(database_url)
             self.engine = create_async_engine(
                 database_url,
                 echo=False,

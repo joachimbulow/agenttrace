@@ -15,7 +15,7 @@ Branch = Literal["correct_validate", "save_result"]
 
 @dataclass(frozen=True)
 class RawRecord:
-    """One row from the CSV extract, loosely typed on purpose.
+    """One record from the CSV extract, loosely typed on purpose.
 
     NOTE: the real Primo extract schema is not finalized yet (see README ->
     "Known open questions"). Only `policy_id` and `task_type` are assumed to
@@ -42,7 +42,7 @@ class GateResult:
 class EnrichmentFinding:
     """One sub-agent's lookup result, produced independently in Node 2.
 
-    `data` is the retrieved record, or `{}` when the lookup found no row.
+    `data` is the retrieved record, or `{}` when the lookup found no record.
     `details` is a lookup note. Comparison (match / mismatch / gap) lives
     on `DiagnosisProposal.status`, not here.
     """

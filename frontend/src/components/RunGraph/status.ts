@@ -8,7 +8,7 @@ export type CardStatus = 'running' | 'completed' | 'error';
 /**
  * A card's status.
  *
- * `error` is the reason the row endpoint carries event payloads inline:
+ * `error` is the reason the record endpoint carries event payloads inline:
  * a failure exists only as an `error` event on the span, not as a column.
  */
 export function cardStatus(node: TraceNode): CardStatus {

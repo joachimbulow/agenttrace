@@ -176,16 +176,16 @@ class TraceTreeResponse(BaseModel):
     root: TraceNodeResponse | None = Field(None, description="Root node of the tree")
 
 
-# === Rows ===
+# === Records ===
 #
-# A row is one item of work travelling through the pipeline -- the unit the
-# graph canvas renders. It is a projection over spans, not a stored entity:
-# `row_id` IS the span id of the row's root span. See
-# docs/decisions/0002-row-as-unit-of-observation.md.
+# A record is one item of work travelling through the pipeline -- the unit
+# the graph canvas renders. It is a projection over spans, not a stored
+# entity: `id` IS the span id of the record's root span. See
+# docs/decisions/0002-record-as-unit-of-observation.md.
 
 
-class RowStatusSchema(str, Enum):
-    """Derived status of a row or a card.
+class RecordStatusSchema(str, Enum):
+    """Derived status of a record or a card.
 
     Not persisted anywhere -- computed from the subtree on read.
     """
@@ -195,34 +195,36 @@ class RowStatusSchema(str, Enum):
     ERROR = "error"
 
 
-class RowSummary(BaseModel):
-    """One row in the row list."""
+class RecordSummary(BaseModel):
+    """One record in the record list."""
 
     model_config = ConfigDict(populate_by_name=True)
 
-    row_id: str = Field(..., description="Row ID (the row root span's ID)")
-    run_id: str = Field(..., description="Run this row belongs to")
-    name: str = Field(..., description="Row root span name")
+    id: str = Field(..., description="Record ID (the record root span's ID)")
+    run_id: str = Field(..., description="Run this record belongs to")
+    name: str = Field(..., description="Record root span name")
     record_id: str | None = Field(None, description="Source record identifier, if stamped")
     policy_id: str | None = Field(None, description="Source policy identifier, if stamped")
-    status: RowStatusSchema = Field(..., description="Derived status")
+    status: RecordStatusSchema = Field(..., description="Derived status")
     started_at: datetime = Field(..., description="Start timestamp")
     ended_at: datetime | None = Field(None, description="End timestamp")
     duration_ms: float | None = Field(None, description="Duration in milliseconds")
-    node_count: int = Field(..., description="Spans in this row's subtree, including the root")
+    node_count: int = Field(..., description="Spans in this record's subtree, including the root")
 
 
-class RowListResponse(BaseModel):
-    """Response for GET /rows?run_id=..."""
+class RecordListResponse(BaseModel):
+    """Response for GET /records?run_id=..."""
 
     model_config = ConfigDict(populate_by_name=True)
 
     run_id: str = Field(..., description="Run ID")
-    rows: list[RowSummary] = Field(default_factory=list, description="Rows in this run")
+    records: list[RecordSummary] = Field(
+        default_factory=list, description="Records in this run"
+    )
 
 
-class RowTreeResponse(BaseModel):
-    """Response for GET /rows/{row_id}.
+class RecordTreeResponse(BaseModel):
+    """Response for GET /records/{record_id}.
 
     Carries the full subtree including event payloads. Events are needed
     inline because a card's `error` status exists only as an `error` event.
@@ -230,10 +232,10 @@ class RowTreeResponse(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    row_id: str = Field(..., description="Row ID")
-    run_id: str = Field(..., description="Run this row belongs to")
-    status: RowStatusSchema = Field(..., description="Derived status")
-    root: TraceNodeResponse = Field(..., description="Row root span with its subtree")
+    id: str = Field(..., description="Record ID (the record root span's ID)")
+    run_id: str = Field(..., description="Run this record belongs to")
+    status: RecordStatusSchema = Field(..., description="Derived status")
+    root: TraceNodeResponse = Field(..., description="Record root span with its subtree")
 
 
 # === Health ===

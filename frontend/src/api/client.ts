@@ -3,8 +3,8 @@
 import type {
   Run,
   RunListResponse,
-  RowListResponse,
-  RowTreeResponse,
+  RecordListResponse,
+  RecordTreeResponse,
   TraceTreeResponse,
   IngestRequest,
   IngestResponse,
@@ -102,15 +102,15 @@ export async function getRunTree(
   }
 }
 
-// === Row API ===
+// === Record API ===
 
-export async function listRows(runId: string): Promise<RowListResponse> {
-  return fetchApi(`/rows?run_id=${encodeURIComponent(runId)}`);
+export async function listRecords(runId: string): Promise<RecordListResponse> {
+  return fetchApi(`/records?run_id=${encodeURIComponent(runId)}`);
 }
 
-export async function getRow(rowId: string): Promise<RowTreeResponse | null> {
+export async function getRecord(recordId: string): Promise<RecordTreeResponse | null> {
   try {
-    return await fetchApi<RowTreeResponse>(`/rows/${encodeURIComponent(rowId)}`);
+    return await fetchApi<RecordTreeResponse>(`/records/${encodeURIComponent(recordId)}`);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       return null;
@@ -119,9 +119,9 @@ export async function getRow(rowId: string): Promise<RowTreeResponse | null> {
   }
 }
 
-/** URL of a row's invalidation stream, for `new EventSource(...)`. */
-export function rowEventsUrl(rowId: string): string {
-  return apiUrl(`/rows/${encodeURIComponent(rowId)}/events`);
+/** URL of a record's invalidation stream, for `new EventSource(...)`. */
+export function recordEventsUrl(recordId: string): string {
+  return apiUrl(`/records/${encodeURIComponent(recordId)}/events`);
 }
 
 // === Ingest API ===

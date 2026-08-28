@@ -134,7 +134,7 @@ cd ../frontend && npm install
 
 # Start backend (terminal 1)
 cd backend
-uvicorn agent_trace.main:app --reload --port 8000
+uv run uvicorn agent_trace.main:app --reload --port 8000
 
 # Start frontend (terminal 2)
 cd frontend

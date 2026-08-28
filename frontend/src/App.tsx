@@ -1,31 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RunList } from './components/RunList/RunList';
-import { RowList } from './components/RowList/RowList';
+import { RecordList } from './components/RecordList/RecordList';
 import { RunGraph } from './components/RunGraph/RunGraph';
 import { StreamIndicator } from './components/StreamIndicator';
 import { ThemeToggle } from './components/ThemeToggle';
-import { useRowStream } from './hooks/useRowStream';
-import { useRow, useRows } from './hooks/useRows';
+import { useRecordStream } from './hooks/useRecordStream';
+import { useRecord, useRecords } from './hooks/useRecords';
 import './App.css';
 
 /**
  * Selection lives in the URL so a view is linkable and survives a reload.
- * `row` is the one the canvas renders; `run` scopes the row list.
+ * `record` is the one the canvas renders; `run` scopes the record list.
  */
 interface Selection {
   runId: string | null;
-  rowId: string | null;
+  recordId: string | null;
 }
 
 function selectionFromUrl(): Selection {
   const params = new URLSearchParams(window.location.search);
-  return { runId: params.get('run'), rowId: params.get('row') };
+  return { runId: params.get('run'), recordId: params.get('record') };
 }
 
-function writeSelection({ runId, rowId }: Selection) {
+function writeSelection({ runId, recordId }: Selection) {
   const url = new URL(window.location.href);
   runId ? url.searchParams.set('run', runId) : url.searchParams.delete('run');
-  rowId ? url.searchParams.set('row', rowId) : url.searchParams.delete('row');
+  recordId ? url.searchParams.set('record', recordId) : url.searchParams.delete('record');
   window.history.replaceState(null, '', url);
 }
 
@@ -36,29 +36,32 @@ function App() {
   useEffect(() => writeSelection(selection), [selection]);
 
   // One subscription drives everything. The ping carries the run, so the
-  // row list and the canvas both refresh off the same stream rather than
+  // record list and the canvas both refresh off the same stream rather than
   // opening a connection each. See ADR-0001.
-  const stream = useRowStream(selection.rowId);
+  const stream = useRecordStream(selection.recordId);
 
-  const { data: rowList, loading: rowsLoading, error: rowsError } = useRows(
+  const { data: recordList, loading: recordsLoading, error: recordsError } = useRecords(
     selection.runId,
     stream.rev
   );
-  const { data: row, loading: rowLoading } = useRow(selection.rowId, stream.rev);
+  const { data: record, loading: recordLoading } = useRecord(
+    selection.recordId,
+    stream.rev
+  );
 
-  const rows = useMemo(() => rowList?.rows ?? [], [rowList]);
-  const selectedRow = useMemo(
-    () => rows.find((r) => r.row_id === selection.rowId) ?? null,
-    [rows, selection.rowId]
+  const records = useMemo(() => recordList?.records ?? [], [recordList]);
+  const selectedRecord = useMemo(
+    () => records.find((r) => r.id === selection.recordId) ?? null,
+    [records, selection.recordId]
   );
 
   const selectRun = useCallback((runId: string) => {
-    setSelection({ runId, rowId: null });
+    setSelection({ runId, recordId: null });
     setSelectedNodeId(null);
   }, []);
 
-  const selectRow = useCallback((rowId: string) => {
-    setSelection((current) => ({ ...current, rowId }));
+  const selectRecord = useCallback((recordId: string) => {
+    setSelection((current) => ({ ...current, recordId }));
     setSelectedNodeId(null);
   }, []);
 
@@ -68,7 +71,7 @@ function App() {
         <h1>Agent Trace</h1>
         <span className="version">v0.1.0</span>
         <div className="header-spacer" />
-        {selection.rowId && (
+        {selection.recordId && (
           <StreamIndicator status={stream.status} lastPingAt={stream.lastPingAt} />
         )}
         <ThemeToggle />
@@ -79,23 +82,26 @@ function App() {
           <SidebarSection title="Runs">
             <RunList onSelectRun={selectRun} selectedRunId={selection.runId} />
           </SidebarSection>
-          <SidebarSection title={`Rows${rows.length ? ` (${rows.length})` : ''}`} grow>
-            <RowList
-              rows={rows}
+          <SidebarSection
+            title={`Records${records.length ? ` (${records.length})` : ''}`}
+            grow
+          >
+            <RecordList
+              records={records}
               runSelected={Boolean(selection.runId)}
-              loading={rowsLoading}
-              error={rowsError}
-              selectedRowId={selection.rowId}
-              onSelectRow={selectRow}
+              loading={recordsLoading}
+              error={recordsError}
+              selectedRecordId={selection.recordId}
+              onSelectRecord={selectRecord}
             />
           </SidebarSection>
         </aside>
 
         <section className="graph-view">
           <RunGraph
-            root={row?.root ?? null}
-            row={selectedRow}
-            loading={rowLoading}
+            root={record?.root ?? null}
+            record={selectedRecord}
+            loading={recordLoading}
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
           />

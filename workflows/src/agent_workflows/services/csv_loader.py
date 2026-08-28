@@ -23,7 +23,7 @@ REQUIRED_COLUMNS = ("policy_id", "task_type")
 
 
 def load_records(csv_path: str | Path) -> list[RawRecord]:
-    """Load rows from `csv_path` into `RawRecord`s.
+    """Load records from `csv_path` into `RawRecord`s.
 
     Raises `ValueError` if a required column is missing, but otherwise makes
     no assumptions about the rest of the schema.
@@ -38,8 +38,8 @@ def load_records(csv_path: str | Path) -> list[RawRecord]:
         if missing:
             raise ValueError(f"CSV missing required columns: {missing}")
 
-        for row in reader:
-            raw = dict(row)
+        for record in reader:
+            raw = dict(record)
             policy_id = raw.pop("policy_id")
             task_type = raw.pop("task_type")
             records.append(

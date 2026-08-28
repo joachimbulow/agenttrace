@@ -61,49 +61,49 @@ export interface TraceTreeResponse {
   root: TraceNode | null;
 }
 
-// === Rows ===
+// === Records ===
 //
-// A row is one item of work through the pipeline — the unit the canvas
-// renders. It is a projection over spans: `row_id` IS the row root span's
-// id. See docs/decisions/0002-row-as-unit-of-observation.md.
+// A record is one item of work through the pipeline — the unit the canvas
+// renders. It is a projection over spans: `id` IS the record root span's
+// id. See docs/decisions/0002-record-as-unit-of-observation.md.
 
-export enum RowStatus {
+export enum RecordStatus {
   RUNNING = 'running',
   COMPLETED = 'completed',
   ERROR = 'error',
 }
 
-export interface RowSummary {
-  row_id: string;
+export interface RecordSummary {
+  id: string;
   run_id: string;
   name: string;
   record_id: string | null;
   policy_id: string | null;
-  status: RowStatus;
+  status: RecordStatus;
   started_at: string;
   ended_at: string | null;
   duration_ms: number | null;
   node_count: number;
 }
 
-export interface RowListResponse {
+export interface RecordListResponse {
   run_id: string;
-  rows: RowSummary[];
+  records: RecordSummary[];
 }
 
-export interface RowTreeResponse {
-  row_id: string;
+export interface RecordTreeResponse {
+  id: string;
   run_id: string;
-  status: RowStatus;
+  status: RecordStatus;
   root: TraceNode;
 }
 
 /**
- * One invalidation ping. Carries no span data — it means only "this row
+ * One invalidation ping. Carries no span data — it means only "this record
  * changed, refetch it". See ADR-0001.
  */
-export interface RowInvalidation {
-  row_id: string;
+export interface RecordInvalidation {
+  record_id: string;
   run_id: string;
   rev: number;
   /** True for a periodic liveness frame carrying no new revision. */

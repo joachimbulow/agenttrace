@@ -28,7 +28,7 @@ All of that is machinery for keeping two copies of the truth in agreement.
 ## Decision
 
 **SSE carries an invalidation ping, not data.** The payload is
-`{row_id, run_id, rev}`. On receiving one, the client refetches `GET /api/v1/rows/{row_id}`.
+`{record_id, run_id, rev}`. On receiving one, the client refetches `GET /api/v1/records/{record_id}`.
 The server's stored tree is the only representation of the truth; the client never
 reconstructs it.
 
@@ -66,7 +66,7 @@ pre-commit, see nothing, and then never be told again. The ingest route therefor
 `BackgroundTasks`, which runs after yield-dependencies are finalised. This is the subtlest
 correctness point in the design and is covered by a test.
 
-**The refetch is a whole subtree.** ~11 nodes per row including event payloads. Cheap here;
+**The refetch is a whole subtree.** ~11 nodes per record including event payloads. Cheap here;
 would not be at production trace volumes.
 
 **Latency floor** is one round trip rather than a push. Locally, imperceptible.

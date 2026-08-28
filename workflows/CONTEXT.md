@@ -7,7 +7,7 @@ terms live elsewhere; this file is only the Primo/DMR/DB2 cleanup domain.
 
 Looks up DMR and DB2 and returns a rich **finding** per source: `source`,
 `details`, `data`. It does not conclude match / mismatch / gap. Empty
-`data` plus a details note means the lookup found no row.
+`data` plus a details note means the lookup found no record.
 
 ## Enrichment finding
 

@@ -6,7 +6,7 @@
 // See docs/decisions/0004-defer-run-completion.md.
 
 import { useEffect, useState } from 'react';
-import type { StreamStatus } from '../hooks/useRowStream';
+import type { StreamStatus } from '../hooks/useRecordStream';
 import { cn } from '../lib/utils';
 
 interface StreamIndicatorProps {
@@ -50,7 +50,7 @@ export function StreamIndicator({ status, lastPingAt }: StreamIndicatorProps) {
 /**
  * Ticking "0.4s ago" readout.
  *
- * Reassurance on a slow row: the pipeline can sit inside one span for
+ * Reassurance on a slow record: the pipeline can sit inside one span for
  * several seconds with nothing visibly changing, and a stalled-looking
  * canvas is indistinguishable from a broken one without this.
  */

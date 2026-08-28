@@ -78,8 +78,8 @@ body {
   overflow: hidden;
 }
 
-/* Runs get an intrinsic, capped height; rows take whatever is left, since
-   a run has many more rows than there are runs on screen. */
+/* Runs get an intrinsic, capped height; records take whatever is left, since
+   a run has many more records than there are runs on screen. */
 .sidebar-section {
   display: flex;
   flex-direction: column;

@@ -16,10 +16,10 @@ This PoC operationalizes "Discover & profile → Diagnose & propose → Correct 
 
 ### Node 1 — Gate: "Do we know this task?"
 Filter before any enrichment. Only recognized task types proceed (PoC scope: just `12_11`, but keep it as a configurable set/list, not a hardcoded single literal). Unknown task types are rejected/short-circuited early.
-Input: raw row(s) from the CSV extract. Output: `known` (bool) + the classified task, or an early-exit record.
+Input: raw record(s) from the CSV extract. Output: `known` (bool) + the classified task, or an early-exit record.
 
 ### Node 2 — Enrich (fan-out, 2 parallel sub-agents)
-- **DMR Sub-agent**: looks up the record against DMR reference data (vehicle/owner details). Produces a DMR-side finding (retrieved row, or empty data if none).
+- **DMR Sub-agent**: looks up the record against DMR reference data (vehicle/owner details). Produces a DMR-side finding (retrieved record, or empty data if none).
 - **DB2 Vehicle Sub-agent**: queries Primo's DB2 for the corresponding vehicle/policy record, produces a DB2-side finding (same shape). Comparison (match / mismatch / gap) happens in Node 3.
 These run independently (implement as genuinely concurrent, e.g. asyncio.gather) and their outputs are merged before diagnosis. Assumption to confirm: sub-agents don't call live DB2/DMR in the PoC — both are mocked.
 

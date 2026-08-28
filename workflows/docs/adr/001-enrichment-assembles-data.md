@@ -18,7 +18,7 @@ only the conclusion moves.
 
 - `EnrichmentFinding` keeps `source`, `details`, and `data`. `status`
   is removed.
-- Services return the retrieved row (or empty `data` + a lookup note).
+- Services return the retrieved record (or empty `data` + a lookup note).
   They do not compare.
 - `DiagnosisProposal` keeps rationale, confidence, and proposed
   correction. It gains `status` (`match` | `mismatch` | `gap`) and

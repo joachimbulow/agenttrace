@@ -1,8 +1,8 @@
-"""Row endpoints, including the live invalidation stream.
+"""Record endpoints, including the live invalidation stream.
 
-A row is the unit the graph canvas renders -- one item of work through the
-pipeline, projected over spans already in the database. See
-`docs/decisions/0002-row-as-unit-of-observation.md`.
+A record is the unit the graph canvas renders -- one item of work through
+the pipeline, projected over spans already in the database. See
+`docs/decisions/0002-record-as-unit-of-observation.md`.
 """
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
-from ...application.dto import RowListResponse, RowTreeResponse
-from ...application.services import RowService
+from ...application.dto import RecordListResponse, RecordTreeResponse
+from ...application.services import RecordService
 from ...domain.interfaces.bus import IRunEventBus
 from ...infrastructure.database import get_db
 from ...infrastructure.database.repositories import (
@@ -24,11 +24,11 @@ from ...infrastructure.database.repositories import (
     SpanEventRepository,
     TraceNodeRepository,
 )
-from ..dependencies import get_event_bus, get_row_service
+from ..dependencies import get_event_bus, get_record_service
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/rows", tags=["rows"])
+router = APIRouter(prefix="/records", tags=["records"])
 
 # How long to block before emitting a heartbeat. Streams never terminate on
 # their own (see ADR-0004), so an idle connection needs to keep proving it
@@ -38,74 +38,74 @@ router = APIRouter(prefix="/rows", tags=["rows"])
 KEEPALIVE_SECONDS = 10.0
 
 
-@router.get("", response_model=RowListResponse)
-async def list_rows(
-    run_id: Annotated[str, Query(description="Run to list rows for")],
-    row_service: RowService = Depends(get_row_service),
-) -> RowListResponse:
-    """List the rows in a run.
+@router.get("", response_model=RecordListResponse)
+async def list_records(
+    run_id: Annotated[str, Query(description="Run to list records for")],
+    record_service: RecordService = Depends(get_record_service),
+) -> RecordListResponse:
+    """List the records in a run.
 
     Args:
         run_id: Run identifier.
-        row_service: Injected RowService.
+        record_service: Injected RecordService.
 
     Returns:
-        Rows in the run, ordered by start time.
+        Records in the run, ordered by start time.
 
     Raises:
         HTTPException: 404 if the run does not exist.
     """
-    rows = await row_service.list_rows(run_id)
-    if rows is None:
+    records = await record_service.list_records(run_id)
+    if records is None:
         raise HTTPException(status_code=404, detail=f"Run {run_id} not found")
-    return rows
+    return records
 
 
-@router.get("/{row_id}", response_model=RowTreeResponse)
-async def get_row(
-    row_id: str,
-    row_service: RowService = Depends(get_row_service),
-) -> RowTreeResponse:
-    """Get a row's full subtree, event payloads included.
+@router.get("/{record_id}", response_model=RecordTreeResponse)
+async def get_record(
+    record_id: str,
+    record_service: RecordService = Depends(get_record_service),
+) -> RecordTreeResponse:
+    """Get a record's full subtree, event payloads included.
 
     This is what the canvas refetches on every invalidation ping.
 
     Args:
-        row_id: Row identifier (the row root span's id).
-        row_service: Injected RowService.
+        record_id: Record identifier (the record root span's id).
+        record_service: Injected RecordService.
 
     Returns:
-        The row's subtree and derived status.
+        The record's subtree and derived status.
 
     Raises:
-        HTTPException: 404 if no such row exists.
+        HTTPException: 404 if no such record exists.
     """
-    row = await row_service.get_row(row_id)
-    if row is None:
-        raise HTTPException(status_code=404, detail=f"Row {row_id} not found")
-    return row
+    record = await record_service.get_record(record_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"Record {record_id} not found")
+    return record
 
 
-@router.get("/{row_id}/events")
-async def stream_row_events(
-    row_id: str,
+@router.get("/{record_id}/events")
+async def stream_record_events(
+    record_id: str,
     request: Request,
     bus: IRunEventBus = Depends(get_event_bus),
 ) -> StreamingResponse:
-    """Subscribe to invalidation pings for a row.
+    """Subscribe to invalidation pings for a record.
 
-    Each message means only "this row changed, refetch it" -- it carries
+    Each message means only "this record changed, refetch it" -- it carries
     no span data. See
     `docs/decisions/0001-invalidation-bus-over-event-stream.md`.
 
     Deliberately takes no database-session dependency. SQLite runs on a
     StaticPool with a single shared connection; a stream holding a session
     open for its lifetime would pin that connection and deadlock ingest.
-    The one lookup this needs (row -> run, because the bus is keyed by
+    The one lookup this needs (record -> run, because the bus is keyed by
     run) happens in a session opened and closed before streaming starts.
 
     Args:
-        row_id: Row identifier (the row root span's id).
+        record_id: Record identifier (the record root span's id).
         request: Used to detect client disconnect.
         bus: Injected run invalidation bus.
 
@@ -113,14 +113,14 @@ async def stream_row_events(
         A text/event-stream response.
 
     Raises:
-        HTTPException: 404 if no such row exists.
+        HTTPException: 404 if no such record exists.
     """
-    run_id = await _resolve_run_id(row_id)
+    run_id = await _resolve_run_id(record_id)
     if run_id is None:
-        raise HTTPException(status_code=404, detail=f"Row {row_id} not found")
+        raise HTTPException(status_code=404, detail=f"Record {record_id} not found")
 
     return StreamingResponse(
-        _ping_stream(request, bus, row_id, run_id),
+        _ping_stream(request, bus, record_id, run_id),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
@@ -132,26 +132,26 @@ async def stream_row_events(
     )
 
 
-async def _resolve_run_id(row_id: str) -> str | None:
-    """Look up a row's run in a short-lived session.
+async def _resolve_run_id(record_id: str) -> str | None:
+    """Look up a record's run in a short-lived session.
 
     Not a FastAPI dependency on purpose: a `Depends`-provided session
     stays open for the whole response, which for a stream means forever.
     """
     db = get_db()
     async with db.session() as session:
-        service = RowService(
+        service = RecordService(
             RunRepository(session),
             TraceNodeRepository(session),
             SpanEventRepository(session),
         )
-        return await service.resolve_run_id(row_id)
+        return await service.resolve_run_id(record_id)
 
 
 async def _ping_stream(
     request: Request,
     bus: IRunEventBus,
-    row_id: str,
+    record_id: str,
     run_id: str,
 ) -> AsyncIterator[str]:
     """Yield invalidation pings until the client goes away.
@@ -161,11 +161,11 @@ async def _ping_stream(
     their own, client disconnect is the only cleanup trigger there is.
     """
     rev = bus.current_rev(run_id)
-    yield _ping(row_id, run_id, rev)
+    yield _ping(record_id, run_id, rev)
 
     while True:
         if await request.is_disconnected():
-            logger.debug("Row stream %s disconnected", row_id)
+            logger.debug("Record stream %s disconnected", record_id)
             return
 
         try:
@@ -179,15 +179,15 @@ async def _ping_stream(
             # so it cannot be used to tell "idle backend" from "dead
             # backend". Repeating a rev is inert -- the client only acts
             # when the rev advances.
-            yield _ping(row_id, run_id, rev, heartbeat=True)
+            yield _ping(record_id, run_id, rev, heartbeat=True)
             continue
         except asyncio.CancelledError:
             return
 
-        yield _ping(row_id, run_id, rev)
+        yield _ping(record_id, run_id, rev)
 
 
-def _ping(row_id: str, run_id: str, rev: int, *, heartbeat: bool = False) -> str:
+def _ping(record_id: str, run_id: str, rev: int, *, heartbeat: bool = False) -> str:
     """Format one SSE frame.
 
     `heartbeat` marks a frame that carries no new revision, so the client
@@ -195,6 +195,6 @@ def _ping(row_id: str, run_id: str, rev: int, *, heartbeat: bool = False) -> str
     readout.
     """
     payload = json.dumps(
-        {"row_id": row_id, "run_id": run_id, "rev": rev, "heartbeat": heartbeat}
+        {"record_id": record_id, "run_id": run_id, "rev": rev, "heartbeat": heartbeat}
     )
     return f"data: {payload}\n\n"

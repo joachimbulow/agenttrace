@@ -12,7 +12,7 @@ class IRunEventBus(ABC):
     """Abstract fan-out between ingest and connected stream subscribers.
 
     Keyed by ``run_id`` because that is the only identifier the ingest path
-    has. Row-scoped streams resolve their run once and wait on it.
+    has. Record-scoped streams resolve their run once and wait on it.
     """
 
     @abstractmethod

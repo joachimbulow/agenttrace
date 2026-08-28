@@ -10,7 +10,7 @@ export interface RunListProps {
  * Run picker for the sidebar.
  *
  * A run is a container, not the thing you watch — pick one to get at its
- * rows. See docs/decisions/0002-row-as-unit-of-observation.md.
+ * records. See docs/decisions/0002-record-as-unit-of-observation.md.
  *
  * `useRuns` polls, so a run started from a terminal shows up on its own.
  */

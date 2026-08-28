@@ -1,9 +1,9 @@
-"""Row projection service.
+"""Record projection service.
 
-A row is one item of work travelling through the pipeline -- the unit the
-graph canvas renders. It is **not** a stored entity: a row is a span, and
-`row_id` is that span's id. See
-`docs/decisions/0002-row-as-unit-of-observation.md` for why a run was the
+A record is one item of work travelling through the pipeline -- the unit the
+graph canvas renders. It is **not** a stored entity: a record is a span, and
+`id` is that span's id. See
+`docs/decisions/0002-record-as-unit-of-observation.md` for why a run was the
 wrong unit to watch.
 """
 from __future__ import annotations
@@ -14,10 +14,10 @@ from ...domain.entities import SpanEvent, TraceNode
 from ...domain.services import TreeBuilder
 from ...domain.value_objects import SpanType
 from ..dto.schemas import (
-    RowListResponse,
-    RowStatusSchema,
-    RowSummary,
-    RowTreeResponse,
+    RecordListResponse,
+    RecordStatusSchema,
+    RecordSummary,
+    RecordTreeResponse,
     SpanEventResponse,
     SpanTypeSchema,
     TraceNodeResponse,
@@ -33,8 +33,8 @@ if TYPE_CHECKING:
 # Attribute stamped by the workflow's LangChain callback bridge
 # (workflows/src/agent_workflows/utils/tracing.py) onto exactly the spans
 # that represent one record's own graph invocation. Its presence is what
-# makes a span a row root.
-ROW_MARKER_ATTRIBUTE = "record_id"
+# makes a span a record root.
+RECORD_MARKER_ATTRIBUTE = "record_id"
 
 ERROR_EVENT_TYPE = "error"
 
@@ -46,8 +46,8 @@ _SPAN_TYPE_MAP = {
 }
 
 
-class RowService:
-    """Application service for the row projection."""
+class RecordService:
+    """Application service for the record projection."""
 
     def __init__(
         self,
@@ -66,8 +66,8 @@ class RowService:
         self._node_repo = node_repo
         self._event_repo = event_repo
 
-    async def resolve_run_id(self, row_id: str) -> str | None:
-        """Find which run a row belongs to.
+    async def resolve_run_id(self, record_id: str) -> str | None:
+        """Find which run a record belongs to.
 
         Used by the SSE route at subscribe time, because the invalidation
         bus is keyed by run. Deliberately a single cheap lookup so the
@@ -77,22 +77,22 @@ class RowService:
         deadlock ingest.
 
         Args:
-            row_id: Row identifier (a span id).
+            record_id: Record identifier (a span id).
 
         Returns:
             The run id, or None if no such span exists.
         """
-        node = await self._node_repo.get(row_id)
+        node = await self._node_repo.get(record_id)
         return node.run_id if node else None
 
-    async def list_rows(self, run_id: str) -> RowListResponse | None:
-        """List the rows in a run.
+    async def list_records(self, run_id: str) -> RecordListResponse | None:
+        """List the records in a run.
 
         Args:
             run_id: Run identifier.
 
         Returns:
-            RowListResponse, or None if the run does not exist.
+            RecordListResponse, or None if the run does not exist.
         """
         run = await self._run_repo.get(run_id)
         if not run:
@@ -100,75 +100,75 @@ class RowService:
 
         nodes = await self._node_repo.list_by_run(run_id)
         if not nodes:
-            return RowListResponse(run_id=run_id, rows=[])
+            return RecordListResponse(run_id=run_id, records=[])
 
         roots = TreeBuilder.build_tree(nodes)
-        row_roots = self._select_row_roots(roots)
-        if not row_roots:
-            return RowListResponse(run_id=run_id, rows=[])
+        record_roots = self._select_record_roots(roots)
+        if not record_roots:
+            return RecordListResponse(run_id=run_id, records=[])
 
         # One query for every event in the run rather than one per span:
         # this list is refetched on every invalidation ping.
         events_by_node = await self._event_repo.list_by_nodes([n.id for n in nodes])
 
-        return RowListResponse(
+        return RecordListResponse(
             run_id=run_id,
-            rows=[self._to_summary(root, events_by_node) for root in row_roots],
+            records=[self._to_summary(root, events_by_node) for root in record_roots],
         )
 
-    async def get_row(self, row_id: str) -> RowTreeResponse | None:
-        """Get a row's full subtree, events included.
+    async def get_record(self, record_id: str) -> RecordTreeResponse | None:
+        """Get a record's full subtree, events included.
 
         Args:
-            row_id: Row identifier (a span id).
+            record_id: Record identifier (a span id).
 
         Returns:
-            RowTreeResponse, or None if no such span exists.
+            RecordTreeResponse, or None if no such span exists.
         """
-        row_node = await self._node_repo.get(row_id)
-        if not row_node:
+        record_node = await self._node_repo.get(record_id)
+        if not record_node:
             return None
 
         # The tree has to be assembled from the whole run: parent/child
         # links live on the nodes, and there is no subtree query.
-        nodes = await self._node_repo.list_by_run(row_node.run_id)
+        nodes = await self._node_repo.list_by_run(record_node.run_id)
         roots = TreeBuilder.build_tree(nodes)
-        root = TreeBuilder.find_node(roots, row_id)
+        root = TreeBuilder.find_node(roots, record_id)
         if root is None:
             return None
 
         subtree = TreeBuilder.flatten_tree([root])
         events_by_node = await self._event_repo.list_by_nodes([n.id for n in subtree])
 
-        return RowTreeResponse(
-            row_id=row_id,
+        return RecordTreeResponse(
+            id=record_id,
             run_id=root.run_id,
             status=self._derive_status(root, events_by_node),
             root=self._node_to_response(root, events_by_node),
         )
 
     @staticmethod
-    def _select_row_roots(roots: list[TraceNode]) -> list[TraceNode]:
-        """Pick the spans that count as rows, most specific rule first.
+    def _select_record_roots(roots: list[TraceNode]) -> list[TraceNode]:
+        """Pick the spans that count as records, most specific rule first.
 
-        1. Spans carrying the row marker attribute. This is the real case:
+        1. Spans carrying the record marker attribute. This is the real case:
            the Primo workflow stamps `record_id` onto exactly one span per
            CSV record.
         2. Otherwise the run roots' direct children -- so a program traced
            with the bare SDK, which stamps nothing, still shows its
-           top-level units of work as rows instead of an empty list.
+           top-level units of work as records instead of an empty list.
         3. Otherwise the run roots themselves, for a single-span run.
 
         Args:
             roots: Run root nodes with children populated.
 
         Returns:
-            Row root nodes, ordered by start time.
+            Record root nodes, ordered by start time.
         """
         marked = [
             node
             for node in TreeBuilder.flatten_tree(roots)
-            if ROW_MARKER_ATTRIBUTE in (node.attributes or {})
+            if RECORD_MARKER_ATTRIBUTE in (node.attributes or {})
         ]
         if marked:
             return sorted(marked, key=lambda n: (n.started_at, n.id))
@@ -184,34 +184,34 @@ class RowService:
         cls,
         root: TraceNode,
         events_by_node: dict[str, list[SpanEvent]],
-    ) -> RowStatusSchema:
-        """Derive a row's status from its subtree.
+    ) -> RecordStatusSchema:
+        """Derive a record's status from its subtree.
 
-        Error wins over completion: a row whose root closed but which
+        Error wins over completion: a record whose root closed but which
         contains a failed span is an error, not a success.
         """
         for node in TreeBuilder.flatten_tree([root]):
             for event in events_by_node.get(node.id, []):
                 if event.event_type == ERROR_EVENT_TYPE:
-                    return RowStatusSchema.ERROR
+                    return RecordStatusSchema.ERROR
 
         if root.ended_at is not None:
-            return RowStatusSchema.COMPLETED
-        return RowStatusSchema.RUNNING
+            return RecordStatusSchema.COMPLETED
+        return RecordStatusSchema.RUNNING
 
     @classmethod
     def _to_summary(
         cls,
         root: TraceNode,
         events_by_node: dict[str, list[SpanEvent]],
-    ) -> RowSummary:
-        """Convert a row root node to a list summary."""
+    ) -> RecordSummary:
+        """Convert a record root node to a list summary."""
         attributes = root.attributes or {}
-        record_id = attributes.get(ROW_MARKER_ATTRIBUTE)
+        record_id = attributes.get(RECORD_MARKER_ATTRIBUTE)
         policy_id = attributes.get("policy_id")
 
-        return RowSummary(
-            row_id=root.id,
+        return RecordSummary(
+            id=root.id,
             run_id=root.run_id,
             name=root.name,
             record_id=str(record_id) if record_id is not None else None,

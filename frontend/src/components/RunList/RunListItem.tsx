@@ -12,7 +12,7 @@ export interface RunListItemProps {
  *
  * Deliberately shows no status badge: run-level completion isn't tracked,
  * so every run reports `running` forever and the badge would be a lie on
- * every row. See docs/decisions/0004-defer-run-completion.md.
+ * every run. See docs/decisions/0004-defer-run-completion.md.
  */
 export function RunListItem({ run, isSelected, onSelect }: RunListItemProps) {
   return (

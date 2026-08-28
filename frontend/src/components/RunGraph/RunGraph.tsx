@@ -13,7 +13,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-import type { RowSummary, TraceNode } from '../../types';
+import type { RecordSummary, TraceNode } from '../../types';
 import { AgentCard, type AgentCardData } from './AgentCard';
 import { CARD_HEIGHT, CARD_WIDTH, collectIds, layoutTree } from './layout';
 import './RunGraph.css';
@@ -22,13 +22,13 @@ const NODE_TYPES = { agentCard: AgentCard };
 
 interface RunGraphProps {
   root: TraceNode | null;
-  row: RowSummary | null;
+  record: RecordSummary | null;
   selectedNodeId: string | null;
   onSelectNode: (nodeId: string) => void;
   loading: boolean;
 }
 
-function Canvas({ root, selectedNodeId, onSelectNode }: Omit<RunGraphProps, 'loading' | 'row'>) {
+function Canvas({ root, selectedNodeId, onSelectNode }: Omit<RunGraphProps, 'loading' | 'record'>) {
   const { fitView } = useReactFlow();
 
   // Ids we have already rendered. A card is animated in only on the tick
@@ -75,7 +75,7 @@ function Canvas({ root, selectedNodeId, onSelectNode }: Omit<RunGraphProps, 'loa
     if (root) seenIds.current = new Set(collectIds(root));
   }, [root]);
 
-  // Keep the whole row in frame as it grows, but only when the shape
+  // Keep the whole record in frame as it grows, but only when the shape
   // actually changed — refitting on every ping would fight the user's pan.
   useEffect(() => {
     if (nodeCount === 0) return;
@@ -104,18 +104,23 @@ function Canvas({ root, selectedNodeId, onSelectNode }: Omit<RunGraphProps, 'loa
   );
 }
 
-export function RunGraph({ root, row, selectedNodeId, onSelectNode, loading }: RunGraphProps) {
-  if (!row) {
-    return <EmptyState title="No row selected" hint="Pick a run, then a row, to watch it run." />;
+export function RunGraph({ root, record, selectedNodeId, onSelectNode, loading }: RunGraphProps) {
+  if (!record) {
+    return (
+      <EmptyState
+        title="No record selected"
+        hint="Pick a run, then a record, to watch it run."
+      />
+    );
   }
 
   if (!root) {
     return loading ? (
-      <EmptyState title="Loading row…" hint={null} />
+      <EmptyState title="Loading record…" hint={null} />
     ) : (
-      // A started row whose spans haven't landed yet is a valid live state,
+      // A started record whose spans haven't landed yet is a valid live state,
       // distinct from "nothing selected".
-      <EmptyState title="Waiting for the first span" hint={row.name} />
+      <EmptyState title="Waiting for the first span" hint={record.name} />
     );
   }
 

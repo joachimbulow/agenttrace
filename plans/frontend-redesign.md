@@ -7,8 +7,8 @@
 > - `docs/decisions/0003-layout-per-tick-over-incremental-spawn.md` — "do not dagre the full
 >   DAG, place nodes incrementally" is reversed. The client receives complete snapshots, so the
 >   whole tree is laid out each tick and positions animate.
-> - `docs/decisions/0002-row-as-unit-of-observation.md` — the canvas renders **one row**, not a
->   run. Navigation is run list → row list → canvas; `RunList` survives rather than being retired.
+> - `docs/decisions/0002-record-as-unit-of-observation.md` — the canvas renders **one record**, not a
+>   run. Navigation is run list → record list → canvas; `RunList` survives rather than being retired.
 > - **Nested package cards and fluid content-driven resize are deferred.** Every span currently
 >   renders as a top-level card. The "Nested agents" and "Fluid size" sections below describe a
 >   later pass, not shipped behaviour.

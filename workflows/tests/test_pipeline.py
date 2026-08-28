@@ -44,7 +44,7 @@ def test_pipeline_runs_end_to_end_over_sample_fixture() -> None:
     unknown = [o for o in outcomes if not o.known]
     known = [o for o in outcomes if o.known]
 
-    # Exactly the unrecognized task_type row should be rejected at the gate.
+    # Exactly the unrecognized task_type record should be rejected at the gate.
     assert {o.policy_id for o in unknown} == {"POL-1004"}
     assert all(o.branch is None for o in unknown)
 

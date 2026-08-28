@@ -5,7 +5,7 @@
 // of Reingold-Tilford does the job with no dependency.
 //
 // Laid out LEFT-TO-RIGHT: depth is a column, siblings stack vertically.
-// A row of the Primo pipeline is ~3 levels deep and ~7 wide, so top-down
+// A record of the Primo pipeline is ~3 levels deep and ~7 wide, so top-down
 // produces a very wide, very short tree that fitView has to shrink to
 // roughly a third scale before it fits a landscape window. Rotating it
 // puts the long axis on the screen's long axis and keeps cards readable.
@@ -37,7 +37,7 @@ export interface Layout {
 }
 
 /**
- * Place every node in a row's subtree.
+ * Place every node in a record's subtree.
  *
  * Leaves take sequential vertical slots; a parent centres against its
  * children. Depth maps to a fixed column. The result depends only on the

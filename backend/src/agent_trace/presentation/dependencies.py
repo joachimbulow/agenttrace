@@ -14,7 +14,7 @@ from ..infrastructure.database.repositories import (
 )
 from ..domain.interfaces.bus import IRunEventBus
 from ..domain.interfaces.clock import IClock, SystemClock
-from ..application.services import RowService, RunService, IngestService
+from ..application.services import RecordService, RunService, IngestService
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -92,12 +92,12 @@ def get_run_service(
     return RunService(run_repo, node_repo, event_repo)
 
 
-def get_row_service(
+def get_record_service(
     run_repo: RunRepository = Depends(get_run_repository),
     node_repo: TraceNodeRepository = Depends(get_trace_node_repository),
     event_repo: SpanEventRepository = Depends(get_span_event_repository),
-) -> RowService:
-    """FastAPI dependency for RowService.
+) -> RecordService:
+    """FastAPI dependency for RecordService.
 
     Args:
         run_repo: RunRepository from dependency injection.
@@ -105,9 +105,9 @@ def get_row_service(
         event_repo: SpanEventRepository from dependency injection.
 
     Returns:
-        RowService instance.
+        RecordService instance.
     """
-    return RowService(run_repo, node_repo, event_repo)
+    return RecordService(run_repo, node_repo, event_repo)
 
 
 def get_event_bus() -> IRunEventBus:

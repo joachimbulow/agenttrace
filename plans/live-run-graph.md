@@ -6,8 +6,8 @@
 > - `docs/decisions/0001-invalidation-bus-over-event-stream.md` — SSE carries an invalidation
 >   ping, **not** the event payloads described in "Event contract" below. The frontend reducer
 >   sketched there does not exist.
-> - `docs/decisions/0002-row-as-unit-of-observation.md` — the canvas renders **one row**, not a
->   whole run. `GET /runs/{id}/events` was replaced by `GET /rows/{row_id}/events`.
+> - `docs/decisions/0002-record-as-unit-of-observation.md` — the canvas renders **one record**, not a
+>   whole run. `GET /runs/{id}/events` was replaced by `GET /records/{record_id}/events`.
 > - `docs/decisions/0004-defer-run-completion.md` — there is no `run_status` event type and
 >   streams do not close.
 >

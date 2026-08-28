@@ -8,7 +8,7 @@ import type { RunListResponse } from '../types';
  * How often to re-poll the run list.
  *
  * Runs are the one thing not covered by the invalidation stream: you can
- * only subscribe to a row, and you can't know a row before you know its
+ * only subscribe to a record, and you can't know a record before you know its
  * run. Without this poll, starting the workflow from a terminal would
  * leave the sidebar empty until a manual refresh.
  */

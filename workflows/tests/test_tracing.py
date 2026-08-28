@@ -67,7 +67,7 @@ def test_pipeline_run_produces_correctly_nested_spans() -> None:
     assert all(count == 1 for count in end_counts.values())
 
     names = [d["name"] for d in starts.values()]
-    # One root-level record span per CSV row, correctly parented under the
+    # One root-level record span per CSV record, correctly parented under the
     # pipeline's root span (Tracer.__enter__/__aenter__ pushes the root as
     # the ambient current span).
     record_spans = [

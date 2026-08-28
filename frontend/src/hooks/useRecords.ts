@@ -1,18 +1,18 @@
-// Row data hooks. Both refetch when `rev` advances — that is the entire
+// Record data hooks. Both refetch when `rev` advances — that is the entire
 // live-update mechanism. See ADR-0001.
 
 import { useCallback, useEffect, useState } from 'react';
-import { getRow, listRows } from '../api/client';
-import type { RowListResponse, RowTreeResponse } from '../types';
+import { getRecord, listRecords } from '../api/client';
+import type { RecordListResponse, RecordTreeResponse } from '../types';
 
 /**
- * Rows in a run, refetched whenever the run changes.
+ * Records in a run, refetched whenever the run changes.
  *
- * `rev` comes from the currently-open row stream. Rows that start after
- * the list was first loaded therefore appear on their own.
+ * `rev` comes from the currently-open record stream. Records that start
+ * after the list was first loaded therefore appear on their own.
  */
-export function useRows(runId: string | null, rev: number) {
-  const [data, setData] = useState<RowListResponse | null>(null);
+export function useRecords(runId: string | null, rev: number) {
+  const [data, setData] = useState<RecordListResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -28,7 +28,7 @@ export function useRows(runId: string | null, rev: number) {
     // underneath so the list doesn't flash on every ping.
     setLoading((current) => current || data === null);
 
-    listRows(runId)
+    listRecords(runId)
       .then((result) => {
         if (!cancelled) {
           setData(result);
@@ -54,13 +54,13 @@ export function useRows(runId: string | null, rev: number) {
 }
 
 /**
- * A row's full subtree, refetched whenever the row's run changes.
+ * A record's full subtree, refetched whenever the record's run changes.
  *
  * This is the canvas's data source. The response is a complete snapshot,
  * so the canvas never reconstructs state from deltas.
  */
-export function useRow(rowId: string | null, rev: number) {
-  const [data, setData] = useState<RowTreeResponse | null>(null);
+export function useRecord(recordId: string | null, rev: number) {
+  const [data, setData] = useState<RecordTreeResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -69,21 +69,21 @@ export function useRow(rowId: string | null, rev: number) {
     setError(null);
   }, []);
 
-  // Drop the previous row's tree the moment the selection changes, so the
-  // canvas never renders one row's cards under another row's header.
+  // Drop the previous record's tree the moment the selection changes, so
+  // the canvas never renders one record's cards under another record's header.
   useEffect(() => {
     clear();
-  }, [rowId, clear]);
+  }, [recordId, clear]);
 
   useEffect(() => {
-    if (!rowId) {
+    if (!recordId) {
       return;
     }
 
     let cancelled = false;
     setLoading((current) => current || data === null);
 
-    getRow(rowId)
+    getRecord(recordId)
       .then((result) => {
         if (!cancelled) {
           setData(result);
@@ -101,7 +101,7 @@ export function useRow(rowId: string | null, rev: number) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rowId, rev]);
+  }, [recordId, rev]);
 
   return { data, loading, error };
 }

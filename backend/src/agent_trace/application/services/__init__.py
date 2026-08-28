@@ -1,5 +1,5 @@
 from .ingest_service import IngestService
-from .row_service import RowService
+from .record_service import RecordService
 from .run_service import RunService
 
-__all__ = ["RunService", "RowService", "IngestService"]
+__all__ = ["RunService", "RecordService", "IngestService"]

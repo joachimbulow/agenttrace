@@ -1,11 +1,11 @@
-// Live subscription to a row's invalidation stream.
+// Live subscription to a record's invalidation stream.
 //
-// The stream carries no span data — only "this row changed, refetch it".
+// The stream carries no span data — only "this record changed, refetch it".
 // See docs/decisions/0001-invalidation-bus-over-event-stream.md.
 
 import { useEffect, useRef, useState } from 'react';
-import { rowEventsUrl } from '../api/client';
-import type { RowInvalidation } from '../types';
+import { recordEventsUrl } from '../api/client';
+import type { RecordInvalidation } from '../types';
 
 /**
  * Two states, not three. There is no `ended`: run completion isn't tracked
@@ -14,17 +14,17 @@ import type { RowInvalidation } from '../types';
  */
 export type StreamStatus = 'idle' | 'connecting' | 'live' | 'reconnecting';
 
-export interface RowStream {
+export interface RecordStream {
   status: StreamStatus;
   /** Bumps on every ping. Anything that should refetch depends on this. */
   rev: number;
-  /** When the row last actually changed, for the "updated Ns ago" readout. */
+  /** When the record last actually changed, for the "updated Ns ago" readout. */
   lastPingAt: number | null;
 }
 
 /**
  * Server heartbeat interval, mirrored from
- * `presentation/routers/rows.py:KEEPALIVE_SECONDS`.
+ * `presentation/routers/records.py:KEEPALIVE_SECONDS`.
  */
 const HEARTBEAT_MS = 10_000;
 
@@ -38,7 +38,7 @@ const HEARTBEAT_MS = 10_000;
  */
 const STALE_AFTER_MS = HEARTBEAT_MS * 2.5;
 
-export function useRowStream(rowId: string | null): RowStream {
+export function useRecordStream(recordId: string | null): RecordStream {
   const [status, setStatus] = useState<StreamStatus>('idle');
   const [rev, setRev] = useState(0);
   const [lastPingAt, setLastPingAt] = useState<number | null>(null);
@@ -50,7 +50,7 @@ export function useRowStream(rowId: string | null): RowStream {
   const lastFrameAt = useRef<number>(0);
 
   useEffect(() => {
-    if (!rowId) {
+    if (!recordId) {
       setStatus('idle');
       setRev(0);
       setLastPingAt(null);
@@ -63,7 +63,7 @@ export function useRowStream(rowId: string | null): RowStream {
     setRev(0);
     setLastPingAt(null);
 
-    const source = new EventSource(rowEventsUrl(rowId));
+    const source = new EventSource(recordEventsUrl(recordId));
 
     source.onopen = () => {
       hasConnected.current = true;
@@ -72,7 +72,7 @@ export function useRowStream(rowId: string | null): RowStream {
     };
 
     source.onmessage = (event) => {
-      let ping: RowInvalidation;
+      let ping: RecordInvalidation;
       try {
         ping = JSON.parse(event.data);
       } catch {
@@ -113,7 +113,7 @@ export function useRowStream(rowId: string | null): RowStream {
       window.clearInterval(watchdog);
       source.close();
     };
-  }, [rowId]);
+  }, [recordId]);
 
   return { status, rev, lastPingAt };
 }

@@ -14,7 +14,7 @@ events — a `span_start` arrives, you place a node, you never learn about work 
 started. Under that assumption it is correct: you cannot lay out a tree you cannot see.
 
 [ADR-0001](0001-invalidation-bus-over-event-stream.md) changed the assumption. The client now
-refetches the complete row subtree on every tick. We see the whole tree, every time.
+refetches the complete record subtree on every tick. We see the whole tree, every time.
 
 ## Decision
 

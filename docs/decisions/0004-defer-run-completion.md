@@ -28,8 +28,8 @@ Per-card status is unaffected and is what the demo actually shows:
 - `completed` — `ended_at` is set
 - `error` — the node has an `error` event
 
-All three come free from data already in the trace tree. Row status derives the same way from
-a row's subtree. Nothing about the live canvas depends on knowing that the *run* is over.
+All three come free from data already in the trace tree. Record status derives the same way from
+a record's subtree. Nothing about the live canvas depends on knowing that the *run* is over.
 
 ## Consequences
 
