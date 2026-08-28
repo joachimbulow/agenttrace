@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from agent_workflows.workflows.primo_kogen import run_primo_kogen
+from agent_workflows.workflows.primo_cleanup import run_primo_cleanup_pipeline
 
 
 def main() -> None:
@@ -16,7 +16,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    outcomes = asyncio.run(run_primo_kogen(args.csv_path))
+    outcomes = asyncio.run(run_primo_cleanup_pipeline(args.csv_path))
 
     print(f"Processed {len(outcomes)} record(s):\n")
     for outcome in outcomes:

@@ -13,7 +13,7 @@ from agent_workflows.pipeline.orchestrator import run_pipeline
 from agent_workflows.utils.tracing import ingest_endpoint
 
 
-async def run_primo_kogen(csv_path: str) -> list[PipelineOutcome]:
+async def run_primo_cleanup_pipeline(csv_path: str) -> list[PipelineOutcome]:
     """Run the pipeline under a traced agent run.
 
     Export failures (backend down) do not fail the workflow itself.
