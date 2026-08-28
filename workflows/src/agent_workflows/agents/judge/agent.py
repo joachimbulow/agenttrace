@@ -22,9 +22,10 @@ path is actually meant to check.
 
 from __future__ import annotations
 
-from langchain_core.runnables import Runnable, RunnableLambda
+from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import DiagnosisResult, JudgeVerdict
+from agent_workflows.pipeline.state import PipelineState
 
 # Deliberate confidence haircut applied when the two source-driven paths
 # (DMR, DB2) disagree with each other -- pushes conflicted cases toward the
@@ -81,3 +82,8 @@ def _judge(diagnosis: DiagnosisResult) -> JudgeVerdict:
 judge_chain: Runnable[DiagnosisResult, JudgeVerdict] = RunnableLambda(_judge).with_config(
     run_name="judge"
 )
+
+
+async def judge_node(state: PipelineState, config: RunnableConfig) -> dict:
+    verdict = await judge_chain.ainvoke(state["diagnosis"], config)
+    return {"verdict": verdict}

@@ -12,9 +12,10 @@ source team before relying on it for anything beyond this scaffold.
 
 from __future__ import annotations
 
-from langchain_core.runnables import Runnable, RunnableLambda
+from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import JudgeVerdict, ResultDecision
+from agent_workflows.pipeline.state import PipelineState
 
 CONFIDENCE_THRESHOLD = 0.75
 
@@ -27,3 +28,8 @@ def _determine_result(verdict: JudgeVerdict) -> ResultDecision:
 determine_result_chain: Runnable[JudgeVerdict, ResultDecision] = RunnableLambda(
     _determine_result
 ).with_config(run_name="determine_result")
+
+
+async def determine_result_node(state: PipelineState, config: RunnableConfig) -> dict:
+    decision = await determine_result_chain.ainvoke(state["verdict"], config)
+    return {"decision": decision}

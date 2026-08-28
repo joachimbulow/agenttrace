@@ -19,7 +19,9 @@ See `docs/workflow_design.md` for the full domain design doc.
 ```
 src/agent_workflows/
   models/schemas.py     shared data contracts (dataclasses) between all nodes
-  pipeline/orchestrator.py   control-flow ONLY -- wires the 6 nodes together
+  pipeline/
+    orchestrator.py     control-flow ONLY -- wires agent nodes into a StateGraph
+    state.py            PipelineState TypedDict (imported by agent nodes)
   agents/
     gate/agent.py                 Node 1 -- "do we know this task?"
     enrich/
@@ -87,10 +89,12 @@ this package's existing conventions:
    branch chain), not sequentially -- this doesn't change the per-record
    graph shape, but means the trace for a multi-row CSV shows several
    parallel per-record subtrees under one root span.
-6. `pipeline/orchestrator.py` is a LangGraph `StateGraph`; `enrich` and
-   `diagnose` are each a single graph node whose parallel sub-agents are
-   expressed via LCEL `RunnableParallel` rather than as separate graph
-   nodes -- see that module's docstring for why.
+6. `pipeline/orchestrator.py` is a LangGraph `StateGraph` that only wires
+   agent nodes; `PipelineState` lives in `pipeline/state.py` so nodes can
+   import it without a cycle. `enrich` and `diagnose` are each a single
+   graph node whose parallel sub-agents are expressed via LCEL
+   `RunnableParallel` rather than as separate graph nodes -- see the
+   orchestrator docstring for why.
 7. `services/staging_service.py`'s "staging area" and "HITL queue" are
    in-memory lists that reset every process run (no persistence) -- fine
    for a scaffold, not representative of a real staging store.
