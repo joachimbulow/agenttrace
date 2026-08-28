@@ -31,5 +31,6 @@ determine_result_chain: Runnable[JudgeVerdict, ResultDecision] = RunnableLambda(
 
 
 async def determine_result_node(state: PipelineState, config: RunnableConfig) -> dict:
-    decision = await determine_result_chain.ainvoke(state["verdict"], config)
+    assert state.verdict is not None
+    decision = await determine_result_chain.ainvoke(state.verdict, config)
     return {"decision": decision}

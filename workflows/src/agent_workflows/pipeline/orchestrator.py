@@ -70,6 +70,7 @@ from __future__ import annotations
 import asyncio
 
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from agent_workflows.agents.correct_validate.agent import correct_validate_node
 from agent_workflows.agents.determine_result.agent import determine_result_node
@@ -85,14 +86,16 @@ from agent_workflows.utils.tracing import agent_trace_callback_handler
 
 
 def _route_known(state: PipelineState) -> str:
-    return "enrich" if state["gate"].known else "reject"
+    assert state.gate is not None
+    return "enrich" if state.gate.known else "reject"
 
 
 def _route_branch(state: PipelineState) -> str:
-    return state["decision"].branch
+    assert state.decision is not None
+    return state.decision.branch
 
 
-def _build_graph() -> StateGraph:
+def _build_graph() -> CompiledStateGraph[PipelineState]:
     builder = StateGraph(PipelineState)
     builder.add_node("gate", gate_node, metadata={"span_type": "step"})
     builder.add_node("reject", reject_node, metadata={"span_type": "step"})

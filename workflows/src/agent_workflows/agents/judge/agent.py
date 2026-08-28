@@ -85,5 +85,6 @@ judge_chain: Runnable[DiagnosisResult, JudgeVerdict] = RunnableLambda(_judge).wi
 
 
 async def judge_node(state: PipelineState, config: RunnableConfig) -> dict:
-    verdict = await judge_chain.ainvoke(state["diagnosis"], config)
+    assert state.diagnosis is not None
+    verdict = await judge_chain.ainvoke(state.diagnosis, config)
     return {"verdict": verdict}

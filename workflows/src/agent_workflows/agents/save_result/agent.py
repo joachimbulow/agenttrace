@@ -52,5 +52,6 @@ save_result_chain: Runnable[ResultDecision, PipelineOutcome] = RunnableLambda(
 
 
 async def save_result_node(state: PipelineState, config: RunnableConfig) -> dict:
-    outcome = await save_result_chain.ainvoke(state["decision"], config)
+    assert state.decision is not None
+    outcome = await save_result_chain.ainvoke(state.decision, config)
     return {"outcome": outcome}

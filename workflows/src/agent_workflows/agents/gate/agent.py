@@ -38,12 +38,13 @@ gate_chain: Runnable[RawRecord, GateResult] = RunnableLambda(_gate).with_config(
 
 
 async def gate_node(state: PipelineState, config: RunnableConfig) -> dict:
-    gate = await gate_chain.ainvoke(state["record"], config)
+    gate = await gate_chain.ainvoke(state.record, config)
     return {"gate": gate}
 
 
 def reject_node(state: PipelineState) -> dict:
-    gate = state["gate"]
+    assert state.gate is not None
+    gate = state.gate
     return {
         "outcome": PipelineOutcome(
             policy_id=gate.record.policy_id,

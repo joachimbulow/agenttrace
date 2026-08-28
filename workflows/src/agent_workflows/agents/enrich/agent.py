@@ -34,5 +34,6 @@ enrich_chain: Runnable[GateResult, EnrichmentResult] = (
 
 
 async def enrich_node(state: PipelineState, config: RunnableConfig) -> dict:
-    enrichment = await enrich_chain.ainvoke(state["gate"], config)
+    assert state.gate is not None
+    enrichment = await enrich_chain.ainvoke(state.gate, config)
     return {"enrichment": enrichment}

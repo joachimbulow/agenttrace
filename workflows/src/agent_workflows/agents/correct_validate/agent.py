@@ -47,5 +47,6 @@ correct_validate_chain: Runnable[ResultDecision, PipelineOutcome] = RunnableLamb
 
 
 async def correct_validate_node(state: PipelineState, config: RunnableConfig) -> dict:
-    outcome = await correct_validate_chain.ainvoke(state["decision"], config)
+    assert state.decision is not None
+    outcome = await correct_validate_chain.ainvoke(state.decision, config)
     return {"outcome": outcome}

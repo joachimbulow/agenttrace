@@ -21,7 +21,7 @@ src/agent_workflows/
   models/schemas.py     shared data contracts (dataclasses) between all nodes
   pipeline/
     orchestrator.py     control-flow ONLY -- wires agent nodes into a StateGraph
-    state.py            PipelineState TypedDict (imported by agent nodes)
+    state.py            PipelineState dataclass (imported by agent nodes)
   agents/
     gate/agent.py                 Node 1 -- "do we know this task?"
     enrich/
