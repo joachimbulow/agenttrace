@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+from uuid import uuid4
 
 from agent_workflows.models.schemas import RawRecord
 
@@ -41,6 +42,13 @@ def load_records(csv_path: str | Path) -> list[RawRecord]:
             raw = dict(row)
             policy_id = raw.pop("policy_id")
             task_type = raw.pop("task_type")
-            records.append(RawRecord(policy_id=policy_id, task_type=task_type, raw=raw))
+            records.append(
+                RawRecord(
+                    policy_id=policy_id,
+                    task_type=task_type,
+                    record_id=str(uuid4()),
+                    raw=raw,
+                )
+            )
 
     return records

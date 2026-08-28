@@ -43,6 +43,7 @@ def _save_result(decision: ResultDecision) -> PipelineOutcome:
         branch="save_result",
         confidence=verdict.confidence,
         summary=f"{save_summary} {hitl_summary}",
+        record_id=record.record_id,
     )
 
 

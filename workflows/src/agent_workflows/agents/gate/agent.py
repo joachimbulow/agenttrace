@@ -53,5 +53,6 @@ def reject_node(state: PipelineState) -> dict:
             branch=None,
             confidence=None,
             summary=gate.reason,
+            record_id=gate.record.record_id,
         )
     }

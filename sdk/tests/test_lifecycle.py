@@ -42,6 +42,17 @@ def _events(exporter: _CapturingExporter):
     return [e for batch in exporter.batches for e in batch.events]
 
 
+def test_run_id_is_public_and_overridable() -> None:
+    exporter = _CapturingExporter()
+    first = Tracer(name="a", exporter=exporter)
+    second = Tracer(name="b", exporter=exporter)
+    assert first.run_id
+    assert first.run_id != second.run_id
+
+    chosen = Tracer(name="c", exporter=exporter, run_id="fixed-run-id")
+    assert chosen.run_id == "fixed-run-id"
+
+
 def test_sync_enter_sets_current_span_and_restores() -> None:
     exporter = _CapturingExporter()
     assert get_current_span() is None
@@ -183,6 +194,7 @@ def test_trace_agent_run_async_sets_current_span_and_flushes(
         exporter: IEventExporter | None = None,
         batch_config: BatchConfig | None = None,
         endpoint: str | None = None,
+        run_id: str | None = None,
     ) -> None:
         original_init(
             self,
@@ -190,6 +202,7 @@ def test_trace_agent_run_async_sets_current_span_and_flushes(
             exporter=exporter or injected,
             batch_config=batch_config,
             endpoint=endpoint,
+            run_id=run_id,
         )
 
     monkeypatch.setattr(Tracer, "__init__", patched_init)

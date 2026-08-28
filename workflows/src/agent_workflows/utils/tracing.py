@@ -136,10 +136,19 @@ class AgentTraceCallbackHandler(AsyncCallbackHandler):
         span_type = (metadata or {}).get("span_type", default_span_type)
         parent_span = self._resolve_parent(parent_run_id)
 
+        attributes: dict[str, Any] = {}
+        if is_root:
+            meta = metadata or {}
+            if "record_id" in meta:
+                attributes["record_id"] = meta["record_id"]
+            if "policy_id" in meta:
+                attributes["policy_id"] = meta["policy_id"]
+
         span = tracer.start_span(
             name=span_name,
             span_type=span_type,
             parent_id=parent_span.id if parent_span else None,
+            attributes=attributes or None,
         )
         span.add_event("input", {"value": _to_jsonable(inputs)})
         self._spans[run_id] = span

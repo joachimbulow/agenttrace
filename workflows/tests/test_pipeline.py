@@ -31,6 +31,9 @@ def test_load_records_is_schema_tolerant() -> None:
     assert all(isinstance(r.raw, dict) for r in records)
     # Extra columns beyond policy_id/task_type pass through untouched.
     assert "plate_number" in records[0].raw
+    ids = [r.record_id for r in records]
+    assert all(ids)
+    assert len(set(ids)) == len(ids)
 
 
 def test_pipeline_runs_end_to_end_over_sample_fixture() -> None:
@@ -56,6 +59,10 @@ def test_pipeline_runs_end_to_end_over_sample_fixture() -> None:
     # branches, not everything collapsing onto one (see README).
     branches = {o.branch for o in known}
     assert branches == {"correct_validate", "save_result"}
+
+    record_ids = [o.record_id for o in outcomes]
+    assert all(record_ids)
+    assert len(set(record_ids)) == len(record_ids)
 
 
 def test_known_task_types_is_configurable_not_a_single_literal() -> None:

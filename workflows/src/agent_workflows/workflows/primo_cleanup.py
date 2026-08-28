@@ -13,5 +13,7 @@ from agent_workflows.utils.tracing import ingest_endpoint
 
 async def run_primo_cleanup_pipeline(csv_path: str) -> list[PipelineOutcome]:
     """Run the pipeline under a traced agent run."""
-    async with Tracer(name="primo_cleanup_pipeline", endpoint=ingest_endpoint()):
+    tracer = Tracer(name="primo_cleanup_pipeline", endpoint=ingest_endpoint())
+    print(f"run_id={tracer.run_id}")
+    async with tracer:
         return await run_pipeline(csv_path)

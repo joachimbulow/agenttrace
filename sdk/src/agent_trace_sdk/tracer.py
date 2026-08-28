@@ -55,6 +55,7 @@ class Tracer:
         exporter: IEventExporter | None = None,
         batch_config: BatchConfig | None = None,
         endpoint: str | None = None,
+        run_id: str | None = None,
     ) -> None:
         """Initialize tracer.
         
@@ -63,9 +64,10 @@ class Tracer:
             exporter: Exporter to use (defaults to HTTPExporter).
             batch_config: Batch processing configuration.
             endpoint: Endpoint URL for HTTP exporter.
+            run_id: Optional run ID. Generated if omitted.
         """
         self._name = name
-        self._run_id = str(uuid4())
+        self._run_id = run_id or str(uuid4())
         self._root_span: Span | None = None
         self._span_token: Token[Span | None] | None = None
         self._run_id_token: Token[str | None] | None = None
@@ -79,6 +81,11 @@ class Tracer:
         
         self._processor = BatchSpanProcessor(exporter, batch_config)
         self._processor.set_run_id(self._run_id, run_name=name)
+
+    @property
+    def run_id(self) -> str:
+        """AgentTrace run ID this tracer exports under."""
+        return self._run_id
     
     @classmethod
     def get_instance(cls) -> Tracer | None:
@@ -103,6 +110,7 @@ class Tracer:
         name: str,
         span_type: str = "step",
         parent_id: str | None = None,
+        attributes: dict[str, Any] | None = None,
     ) -> Span:
         """Start a new span.
         
@@ -110,6 +118,7 @@ class Tracer:
             name: Human-readable name for the span.
             span_type: Type of span (agent_run, step, tool_call, llm_call).
             parent_id: Parent span ID, or None for root.
+            attributes: Optional attributes to set before the span_start event.
             
         Returns:
             New Span instance.
@@ -126,6 +135,8 @@ class Tracer:
             parent_id=parent_id,
             tracer=self,
         )
+        if attributes:
+            span.attributes.update(attributes)
         
         self._add_span_start_event(span)
         

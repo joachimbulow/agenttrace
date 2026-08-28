@@ -38,6 +38,7 @@ def _correct_validate(decision: ResultDecision) -> PipelineOutcome:
         branch="correct_validate",
         confidence=verdict.confidence,
         summary=f"{apply_summary} {stage_summary}",
+        record_id=record.record_id,
     )
 
 

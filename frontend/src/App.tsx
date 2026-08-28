@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { RunList } from './components/RunList/RunList';
 import { TraceTree } from './components/TraceTree/TraceTree';
 import { DetailsPanel } from './components/DetailsPanel/DetailsPanel';
@@ -6,9 +6,30 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import './App.css';
 
+function runIdFromUrl(): string | null {
+  const value = new URLSearchParams(window.location.search).get('run');
+  return value ? value : null;
+}
+
+function setRunQuery(runId: string | null) {
+  const url = new URL(window.location.href);
+  if (runId) {
+    url.searchParams.set('run', runId);
+  } else {
+    url.searchParams.delete('run');
+  }
+  window.history.replaceState(null, '', url);
+}
+
 function App() {
-  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(runIdFromUrl);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  const selectRun = useCallback((runId: string) => {
+    setSelectedRunId(runId);
+    setSelectedNodeId(null);
+    setRunQuery(runId);
+  }, []);
 
   return (
     <div className="app">
@@ -22,13 +43,7 @@ function App() {
 
       <main className="app-main">
         <aside className="sidebar">
-          <RunList
-            onSelectRun={(runId) => {
-              setSelectedRunId(runId);
-              setSelectedNodeId(null);
-            }}
-            selectedRunId={selectedRunId}
-          />
+          <RunList onSelectRun={selectRun} selectedRunId={selectedRunId} />
         </aside>
 
         <section className="trace-view">

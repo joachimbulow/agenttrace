@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Literal
+from uuid import uuid4
 
 Branch = Literal["correct_validate", "save_result"]
 
@@ -24,6 +25,7 @@ class RawRecord:
 
     policy_id: str
     task_type: str
+    record_id: str = field(default_factory=lambda: str(uuid4()))
     raw: dict[str, Any] = field(default_factory=dict)
 
 
@@ -108,3 +110,5 @@ class PipelineOutcome:
     branch: Branch | None
     confidence: float | None
     summary: str
+    record_id: str
+    run_id: str | None = None

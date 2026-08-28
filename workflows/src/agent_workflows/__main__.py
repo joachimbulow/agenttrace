@@ -23,8 +23,9 @@ def main() -> None:
         confidence = f"{outcome.confidence:.2f}" if outcome.confidence is not None else "n/a"
         branch = outcome.branch or "n/a (rejected at gate)"
         print(
-            f"  policy_id={outcome.policy_id} task_type={outcome.task_type} "
-            f"known={outcome.known} branch={branch} confidence={confidence}"
+            f"  record_id={outcome.record_id} policy_id={outcome.policy_id} "
+            f"task_type={outcome.task_type} known={outcome.known} "
+            f"branch={branch} confidence={confidence}"
         )
         print(f"    {outcome.summary}")
 

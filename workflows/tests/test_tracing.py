@@ -53,7 +53,10 @@ def _run_traced(
 
 
 def test_pipeline_run_produces_correctly_nested_spans() -> None:
-    _, events, root_span = _run_traced(str(SAMPLE_CSV))
+    outcomes, events, root_span = _run_traced(str(SAMPLE_CSV))
+
+    assert all(o.record_id for o in outcomes)
+    assert all(o.run_id == root_span.run_id for o in outcomes)
 
     starts = {e.span_id: e.data for e in events if e.event_type == "span_start"}
     end_counts = Counter(e.span_id for e in events if e.event_type == "span_end")
@@ -73,6 +76,9 @@ def test_pipeline_run_produces_correctly_nested_spans() -> None:
     assert len(record_spans) == 7
     for span_id in record_spans:
         assert starts[span_id]["parent_id"] == root_span.id
+        attrs = starts[span_id].get("attributes") or {}
+        assert attrs.get("record_id")
+        assert attrs.get("policy_id")
 
     # The full expected node/sub-agent span vocabulary shows up somewhere
     # across the 7 records (mix of known/unknown, correct_validate/save_result).
