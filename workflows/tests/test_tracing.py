@@ -11,9 +11,10 @@ import asyncio
 from collections import Counter
 from pathlib import Path
 
-from agent_trace_sdk import Tracer, set_current_span
-from agent_trace_sdk.domain.interfaces import ExportBatch, IEventExporter
+from agent_trace_sdk import Span, Tracer
+from agent_trace_sdk.domain.interfaces import ExportBatch, ExportEvent, IEventExporter
 
+from agent_workflows.models.schemas import PipelineOutcome
 from agent_workflows.pipeline.orchestrator import run_pipeline
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
@@ -37,21 +38,13 @@ class _CapturingExporter(IEventExporter):
         pass
 
 
-def _run_traced(csv_path: str) -> tuple[list, _CapturingExporter]:
+def _run_traced(
+    csv_path: str,
+) -> tuple[list[PipelineOutcome], list[ExportEvent], Span]:
     async def _run():
         exporter = _CapturingExporter()
-        with Tracer(name="test_run", exporter=exporter) as root_span:
-            set_current_span(root_span)
-            try:
-                outcomes = await run_pipeline(csv_path)
-            finally:
-                set_current_span(None)
-        # Span export is fire-and-forget on the running loop (see
-        # workflows/primo_kogen.py) -- give pending export tasks a beat to
-        # finish before inspecting what was captured.
-        pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-        if pending:
-            await asyncio.gather(*pending, return_exceptions=True)
+        async with Tracer(name="test_run", exporter=exporter) as root_span:
+            outcomes = await run_pipeline(csv_path)
         return outcomes, exporter, root_span
 
     outcomes, exporter, root_span = asyncio.run(_run())
@@ -72,9 +65,8 @@ def test_pipeline_run_produces_correctly_nested_spans() -> None:
 
     names = [d["name"] for d in starts.values()]
     # One root-level record span per CSV row, correctly parented under the
-    # pipeline's root span (this is what pushing `root_span` as the ambient
-    # current span via `set_current_span`, not just `Tracer.__enter__`,
-    # makes possible).
+    # pipeline's root span (Tracer.__enter__/__aenter__ pushes the root as
+    # the ambient current span).
     record_spans = [
         span_id for span_id, d in starts.items() if d["name"].startswith("primo_kogen_record[")
     ]

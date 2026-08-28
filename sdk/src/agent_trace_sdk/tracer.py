@@ -1,15 +1,26 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+import warnings
+from contextvars import Token
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
-from datetime import datetime, timezone
-import asyncio
 
+from .context import (
+    get_current_span,
+    reset_current_run_id,
+    reset_current_span,
+    set_current_run_id,
+    set_current_span,
+)
+from .domain.interfaces import ExportEvent, IEventExporter
+from .exporter import HTTPExporter
+from .processor import BatchConfig, BatchSpanProcessor
 from .span import Span
-from .exporter import HTTPExporter, ConsoleExporter
-from .processor import BatchSpanProcessor, BatchConfig
-from .context import set_current_run_id
-from .domain.interfaces import ExportEvent
+
+logger = logging.getLogger(__name__)
 
 
 def _utcnow() -> datetime:
@@ -21,10 +32,14 @@ class Tracer:
     """Main tracer for capturing AI agent traces.
     
     Usage:
-        # Context manager
-        with Tracer(name="my_agent") as span:
+        # Async context manager (preferred for CLI / asyncio.run)
+        async with Tracer(name="my_agent") as span:
             span.set_attribute("model", "gpt-4")
             # ... agent logic ...
+        
+        # Sync context manager (no running event loop)
+        with Tracer(name="my_agent") as span:
+            ...
         
         # Decorator
         @trace_agent_run(name="my_agent")
@@ -37,7 +52,7 @@ class Tracer:
     def __init__(
         self,
         name: str,
-        exporter: HTTPExporter | ConsoleExporter | None = None,
+        exporter: IEventExporter | None = None,
         batch_config: BatchConfig | None = None,
         endpoint: str | None = None,
     ) -> None:
@@ -52,13 +67,17 @@ class Tracer:
         self._name = name
         self._run_id = str(uuid4())
         self._root_span: Span | None = None
+        self._span_token: Token[Span | None] | None = None
+        self._run_id_token: Token[str | None] | None = None
+        self._pending: set[asyncio.Task[Any]] = set()
+        self._closed = False
         
-        # Create exporter if not provided
         if exporter is None:
-            exporter = HTTPExporter(endpoint=endpoint or "http://localhost:8000/api/v1/ingest/events")
+            exporter = HTTPExporter(
+                endpoint=endpoint or "http://localhost:8000/api/v1/ingest/events"
+            )
         
         self._processor = BatchSpanProcessor(exporter, batch_config)
-        # Pass run_name for first batch
         self._processor.set_run_id(self._run_id, run_name=name)
     
     @classmethod
@@ -95,6 +114,11 @@ class Tracer:
         Returns:
             New Span instance.
         """
+        if parent_id is None:
+            current = get_current_span()
+            if current is not None:
+                parent_id = current.id
+        
         span = Span.create(
             run_id=self._run_id,
             name=name,
@@ -103,17 +127,12 @@ class Tracer:
             tracer=self,
         )
         
-        # Send span_start event
         self._add_span_start_event(span)
         
         return span
     
     def _add_span_start_event(self, span: Span) -> None:
-        """Add span_start event to processor.
-        
-        Args:
-            span: The span that was started.
-        """
+        """Add span_start event to processor and flush so the live graph can update."""
         event = ExportEvent(
             event_type="span_start",
             span_id=span.id,
@@ -125,14 +144,10 @@ class Tracer:
                 "attributes": span.attributes,
             },
         )
-        self._run_async(self._processor.add_event(event))
+        self._schedule(self._emit(event, flush=True))
     
     def _end_span(self, span: Span) -> None:
-        """Handle span end.
-        
-        Args:
-            span: The span that ended.
-        """
+        """Handle span end and flush so the live graph can update."""
         event = ExportEvent(
             event_type="span_end",
             span_id=span.id,
@@ -141,7 +156,7 @@ class Tracer:
                 "attributes": span.attributes,
             },
         )
-        self._run_async(self._processor.add_event(event))
+        self._schedule(self._emit(event, flush=True))
     
     def _add_event(
         self,
@@ -165,34 +180,83 @@ class Tracer:
                 "payload": payload,
             },
         )
-        self._run_async(self._processor.add_event(event))
+        self._schedule(self._emit(event, flush=False))
     
-    def _run_async(self, coro: Any) -> None:
-        """Run an async coroutine, handling the event loop.
+    async def _emit(self, event: ExportEvent, *, flush: bool) -> None:
+        await self._processor.add_event(event)
+        if flush:
+            await self._processor.flush()
+    
+    def _schedule(self, coro: Any) -> None:
+        """Run an export coroutine without failing the agent run.
         
-        Args:
-            coro: The coroutine to run.
+        On a running loop the work is tracked so `__aexit__` can await it.
+        With no loop, the coroutine is run to completion immediately.
         """
         try:
             loop = asyncio.get_running_loop()
-            loop.create_task(coro)
         except RuntimeError:
-            # No running event loop - this is expected in sync context
-            # We need to run in a new loop, but this blocks
-            # For SDK use, this should typically be called from async context
-            # or the user should handle the async properly
-            import warnings
-            warnings.warn(
-                "SDK event submitted outside async context. "
-                "Consider using async context manager or running in async function.",
-                RuntimeWarning,
-                stacklevel=3,
-            )
+            self._run_sync(coro)
+            return
+        task = loop.create_task(self._run_logged(coro))
+        self._pending.add(task)
+        task.add_done_callback(self._pending.discard)
+    
+    async def _run_logged(self, coro: Any) -> None:
+        try:
+            await coro
+        except Exception:
+            logger.exception("Trace export failed")
+    
+    def _run_sync(self, coro: Any) -> None:
+        async def _runner() -> None:
             try:
-                asyncio.run(coro)
-            except RuntimeError:
-                # Already in a loop (shouldn't happen, but be safe)
-                pass
+                await coro
+            except Exception:
+                logger.exception("Trace export failed")
+        asyncio.run(_runner())
+    
+    def _activate(self) -> Span:
+        Tracer.set_instance(self)
+        self._run_id_token = set_current_run_id(self._run_id)
+        self._root_span = self.start_span(
+            name=self._name,
+            span_type="agent_run",
+        )
+        self._span_token = set_current_span(self._root_span)
+        return self._root_span
+    
+    def _deactivate(self, exc_type: Any, exc_val: Any) -> None:
+        try:
+            if self._root_span is not None:
+                if exc_type is not None and not self._root_span._ended:
+                    self._root_span.add_event("error", {
+                        "exception_type": exc_type.__name__,
+                        "exception_message": str(exc_val),
+                    })
+                self._root_span.complete()
+        finally:
+            if self._span_token is not None:
+                reset_current_span(self._span_token)
+                self._span_token = None
+            if self._run_id_token is not None:
+                reset_current_run_id(self._run_id_token)
+                self._run_id_token = None
+            if Tracer._instance is self:
+                Tracer.set_instance(None)
+    
+    async def _shutdown(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        current = asyncio.current_task()
+        pending = [t for t in list(self._pending) if t is not current and not t.done()]
+        if pending:
+            await asyncio.gather(*pending, return_exceptions=True)
+        try:
+            await self._processor.close()
+        except Exception:
+            logger.exception("Trace flush/close failed")
     
     def __enter__(self) -> Span:
         """Enter tracer context.
@@ -202,33 +266,34 @@ class Tracer:
         Returns:
             Root span.
         """
-        # Set this as global instance
-        Tracer.set_instance(self)
-        
-        # Set run ID in context
-        set_current_run_id(self._run_id)
-        
-        # Start root span
-        self._root_span = self.start_span(
-            name=self._name,
-            span_type="agent_run",
-        )
-        
-        return self._root_span
+        return self._activate()
     
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Exit tracer context.
         
-        Ends the root span and flushes events.
+        Ends the root span and flushes events. Prefer `async with` when an
+        event loop is already running so flush is awaited before the loop
+        closes.
         """
-        # End root span
-        if self._root_span:
-            self._root_span.ended_at = _utcnow()
-            self._end_span(self._root_span)
-        
-        # Flush and close processor
-        self._run_async(self._processor.flush())
-        
-        # Clear global instance
-        Tracer.set_instance(None)
-        set_current_run_id(None)
+        self._deactivate(exc_type, exc_val)
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            asyncio.run(self._shutdown())
+            return
+        warnings.warn(
+            "Tracer used as a sync context manager inside a running event loop; "
+            "export may not finish. Use 'async with Tracer(...)'.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        loop.create_task(self._shutdown())
+    
+    async def __aenter__(self) -> Span:
+        """Enter tracer context and set the root as the current span."""
+        return self._activate()
+    
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """End the root span, await SDK export tasks, then flush and close."""
+        self._deactivate(exc_type, exc_val)
+        await self._shutdown()

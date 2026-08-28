@@ -52,7 +52,7 @@ def trace_agent_run(
         @wraps(func)
         async def async_wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             """Async wrapper for traced function."""
-            with Tracer(name=run_name, endpoint=endpoint) as span:
+            async with Tracer(name=run_name, endpoint=endpoint) as span:
                 # Store span in kwargs if function accepts it
                 if "trace_span" in func.__code__.co_varnames:
                     kwargs["trace_span"] = span

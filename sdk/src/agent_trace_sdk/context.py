@@ -32,6 +32,11 @@ def set_current_span(span: Span | None) -> Token[Span | None]:
     return _current_span.set(span)
 
 
+def reset_current_span(token: Token[Span | None]) -> None:
+    """Restore the current span to the value captured by `token`."""
+    _current_span.reset(token)
+
+
 def get_current_run_id() -> str | None:
     """Get the current run ID from context.
     
@@ -51,3 +56,8 @@ def set_current_run_id(run_id: str | None) -> Token[str | None]:
         Token that can be used to reset to previous value.
     """
     return _current_run_id.set(run_id)
+
+
+def reset_current_run_id(token: Token[str | None]) -> None:
+    """Restore the current run ID to the value captured by `token`."""
+    _current_run_id.reset(token)

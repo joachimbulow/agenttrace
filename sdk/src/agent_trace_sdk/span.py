@@ -6,7 +6,7 @@ from typing import Any, TYPE_CHECKING
 from uuid import uuid4
 from contextvars import Token
 
-from .context import set_current_span
+from .context import reset_current_span, set_current_span
 
 if TYPE_CHECKING:
     from .tracer import Tracer
@@ -38,6 +38,7 @@ class Span:
     ended_at: datetime | None = None
     attributes: dict[str, Any] = field(default_factory=dict)
     _token: Token[Span | None] | None = field(default=None, repr=False)
+    _ended: bool = field(default=False, repr=False, compare=False)
     
     def __post_init__(self) -> None:
         """Validate span data."""
@@ -122,27 +123,27 @@ class Span:
             exc_val: Exception value if raised, None otherwise.
             exc_tb: Exception traceback if raised, None otherwise.
         """
-        # End the span
-        self.ended_at = _utcnow()
-        
-        # Add error event if exception occurred
-        if exc_type is not None:
+        if exc_type is not None and not self._ended:
             self.add_event("error", {
                 "exception_type": exc_type.__name__,
                 "exception_message": str(exc_val),
             })
         
-        # Export the span
-        if self.tracer:
-            self.tracer._end_span(self)
+        self.complete()
         
-        # Restore previous span
-        if self._token:
-            from .context import _current_span
-            _current_span.reset(self._token)
+        if self._token is not None:
+            reset_current_span(self._token)
+            self._token = None
     
     def complete(self) -> None:
-        """Mark the span as complete (alternative to context manager)."""
+        """Mark the span as complete (alternative to context manager).
+        
+        Safe to call more than once; subsequent calls are no-ops so a span
+        cannot emit two `span_end` events.
+        """
+        if self._ended:
+            return
+        self._ended = True
         self.ended_at = _utcnow()
         if self.tracer:
             self.tracer._end_span(self)
