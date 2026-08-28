@@ -10,6 +10,7 @@ import {
   useReactFlow,
   type Edge,
   type Node,
+  type NodeMouseHandler,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -25,7 +26,7 @@ interface RunGraphProps {
   root: TraceNode | null;
   record: RecordSummary | null;
   selectedNodeId: string | null;
-  onSelectNode: (nodeId: string) => void;
+  onSelectNode: (nodeId: string | null) => void;
   loading: boolean;
 }
 
@@ -82,6 +83,18 @@ function Canvas({ root, selectedNodeId, onSelectNode }: Omit<RunGraphProps, 'loa
     return () => window.clearTimeout(timer);
   }, [nodeCount, fitView]);
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onSelectNode(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onSelectNode]);
+
+  const onNodeClick: NodeMouseHandler = (_event, node) => {
+    onSelectNode(selectedNodeId === node.id ? null : node.id);
+  };
+
   return (
     <ReactFlow
       nodes={nodes}
@@ -94,6 +107,8 @@ function Canvas({ root, selectedNodeId, onSelectNode }: Omit<RunGraphProps, 'loa
       minZoom={0.2}
       maxZoom={1.6}
       className="agenttrace-canvas"
+      onNodeClick={onNodeClick}
+      onPaneClick={() => onSelectNode(null)}
     >
       {/* A whisper of texture so pan reads as movement, not a static image. */}
       <Background variant={BackgroundVariant.Dots} gap={28} size={1} className="agenttrace-bg" />

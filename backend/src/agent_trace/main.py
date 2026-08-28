@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Agent Trace",
+    title="Primo -> Guidewire Migration Demo",
     description="Local visual debugger for AI agents",
     version="0.1.0",
     lifespan=lifespan,

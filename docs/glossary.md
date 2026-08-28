@@ -65,6 +65,17 @@ present). Cards are self-coded React components, not React Flow node chrome.
 Cards are not pre-rendered for work that hasn't started — unspawned work is absent, not drawn
 idle.
 
+## Highlight
+
+On-card preview of a span's output or error payload. At most three facts, generic — preferred
+keys (`status`, `confidence`, `rationale`, …) then leftover scalars, then nested chips. The
+label is the JSON key, lowercase. Not the card's lifecycle [status](#card).
+
+## Overlay
+
+Full generic tree of that same payload, opened from a selected card. Closed by toggling the
+card, Escape, or clicking the pane.
+
 ## Invalidation ping
 
 The only thing the streaming endpoint sends. A ping means *"this record's data changed, refetch

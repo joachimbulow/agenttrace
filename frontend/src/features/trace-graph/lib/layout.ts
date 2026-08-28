@@ -2,7 +2,7 @@
 import type { TraceNode } from '@/features/trace-graph/types/trace';
 
 export const CARD_WIDTH = 196;
-export const CARD_HEIGHT = 84;
+export const CARD_HEIGHT = 132;
 
 /** Horizontal gap between leaf columns. */
 const SLOT_GAP = 34;

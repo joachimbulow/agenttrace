@@ -17,6 +17,10 @@
   stroke: oklch(var(--muted-foreground) / 0.45);
 }
 
+.agenttrace-canvas .react-flow__node-toolbar {
+  z-index: 20;
+}
+
 /* Nodes glide when a sibling appears and the tidy-tree shifts them. The
    growth is the signature, so it must read as motion, not a redraw. */
 .agenttrace-canvas .react-flow__node {

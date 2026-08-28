@@ -66,7 +66,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Agent Trace</h1>
+        <h1>Primo Guidewire Migration Demo</h1>
         <span className="version">v0.1.0</span>
         <div className="header-spacer" />
         {selection.recordId && (

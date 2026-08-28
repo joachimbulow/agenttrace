@@ -1,4 +1,4 @@
-"""Agent Trace - Local visual debugger for AI agents."""
+"""Primo -> Guidewire Migration Demo - Local visual debugger for AI agents."""
 
 from .domain import AgentRun, TraceNode, SpanEvent, SpanType, RunStatus
 

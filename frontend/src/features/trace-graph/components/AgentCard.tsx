@@ -6,6 +6,9 @@ import { Bot, ChevronRight, Sparkles, Wrench, type LucideIcon } from 'lucide-rea
 import { SpanType, type TraceNode } from '@/features/trace-graph/types/trace';
 import { cardStatus, formatDuration, type CardStatus } from '@/features/trace-graph/lib/status';
 import { CARD_HEIGHT, CARD_WIDTH } from '@/features/trace-graph/lib/layout';
+import { displayPayload, pickHighlights } from '@/features/trace-graph/lib/payload';
+import { PayloadHighlights } from '@/features/trace-graph/components/PayloadHighlights';
+import { PayloadOverlay } from '@/features/trace-graph/components/PayloadOverlay';
 import { cn } from '@/shared/lib/utils';
 
 export interface AgentCardData extends Record<string, unknown> {
@@ -13,7 +16,7 @@ export interface AgentCardData extends Record<string, unknown> {
   /** First tick this card exists — drives spawn. */
   isNew: boolean;
   selected: boolean;
-  onSelect: (nodeId: string) => void;
+  onSelect: (nodeId: string | null) => void;
 }
 
 const STATUS_DOT: Record<CardStatus, string> = {
@@ -67,67 +70,69 @@ export function AgentCard({ data }: NodeProps) {
   const { node, isNew, selected, onSelect } = data as AgentCardData;
   const status = cardStatus(node);
   const duration = formatDuration(node.duration_ms);
-  const eventCount = node.events.length;
+  const payload = displayPayload(node.events);
+  const highlights = payload ? pickHighlights(payload.value) : [];
   const type = TYPE_STYLE[node.span_type] ?? TYPE_STYLE[SpanType.STEP];
   const TypeIcon = type.icon;
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(node.id)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onSelect(node.id);
-        }
-      }}
-      style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
-      className={cn(
-        'group relative flex cursor-pointer flex-col justify-between overflow-hidden',
-        'rounded-lg border bg-card py-2.5 pl-4 pr-3 text-left',
-        'shadow-sm transition-[box-shadow,border-color,transform] duration-200',
-        'hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        STATUS_RING[status],
-        selected && 'ring-2 ring-ring',
-        isNew && 'agenttrace-spawn'
-      )}
-    >
+    <div style={{ width: CARD_WIDTH, height: CARD_HEIGHT }} className="relative nopan">
+      <div
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelect(selected ? null : node.id);
+          }
+        }}
+        className={cn(
+          'flex h-full cursor-pointer flex-col justify-between overflow-hidden',
+          'relative rounded-lg border bg-card py-2.5 pl-4 pr-3 text-left',
+          'shadow-sm transition-[box-shadow,border-color,transform] duration-200',
+          'hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+          STATUS_RING[status],
+          selected && 'ring-2 ring-ring',
+          isNew && 'agenttrace-spawn'
+        )}
+      >
+        <span aria-hidden className={cn('absolute inset-y-0 left-0 w-1', type.spine)} />
+
+        <div className="flex items-start gap-2">
+          <span
+            aria-hidden
+            className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', STATUS_DOT[status])}
+          />
+          <span
+            className="truncate text-sm font-medium leading-snug text-card-foreground"
+            title={node.name}
+          >
+            {node.name}
+          </span>
+        </div>
+
+        <PayloadHighlights rows={highlights} />
+
+        <div className="flex items-center justify-between gap-2">
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono',
+              'text-[10px] uppercase tracking-wide',
+              type.chip
+            )}
+          >
+            <TypeIcon aria-hidden className="h-3 w-3" strokeWidth={2.5} />
+            {type.label}
+          </span>
+          <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+            {duration ?? (status === 'running' ? 'running…' : '—')}
+          </span>
+        </div>
+      </div>
+
       {/* Flow is top-down, so edges enter the top and leave the bottom. */}
       <Handle type="target" position={Position.Top} className="!opacity-0" />
-
-      <span aria-hidden className={cn('absolute inset-y-0 left-0 w-1', type.spine)} />
-
-      <div className="flex items-start gap-2">
-        <span
-          aria-hidden
-          className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', STATUS_DOT[status])}
-        />
-        <span
-          className="truncate text-sm font-medium leading-snug text-card-foreground"
-          title={node.name}
-        >
-          {node.name}
-        </span>
-      </div>
-
-      <div className="flex items-center justify-between gap-2">
-        <span
-          className={cn(
-            'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono',
-            'text-[10px] uppercase tracking-wide',
-            type.chip
-          )}
-        >
-          <TypeIcon aria-hidden className="h-3 w-3" strokeWidth={2.5} />
-          {type.label}
-        </span>
-        <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
-          {duration ?? (status === 'running' ? 'running…' : '—')}
-          {eventCount > 0 && <span className="ml-2 opacity-70">{eventCount}e</span>}
-        </span>
-      </div>
-
+      {selected && payload && <PayloadOverlay value={payload.value} />}
       <Handle type="source" position={Position.Bottom} className="!opacity-0" />
     </div>
   );
