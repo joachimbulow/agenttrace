@@ -5,8 +5,8 @@
 The real DMR integration is out of scope for this scaffold (see
 docs/workflow_design.md). This module defines the interface a future,
 real implementation must satisfy (`lookup`), and a tiny fixed reference
-table so the pipeline can run end-to-end and produce varied, demoable
-findings (match / mismatch / gap) instead of a single constant answer.
+table so the pipeline can run end-to-end. Comparison against the extract
+happens in diagnose, not here.
 """
 
 from __future__ import annotations
@@ -48,42 +48,18 @@ _DMR_REFERENCE: dict[str, dict[str, str]] = {
     # POL-1005 intentionally absent -> simulates a DMR data gap.
 }
 
-_COMPARE_FIELDS = ("plate_number", "owner_name", "vehicle_make", "vehicle_model")
-
 
 def lookup(record: RawRecord) -> EnrichmentFinding:
-    """# MOCK: look up `record` against the DMR reference register.
-
-    Deterministic stand-in for a real DMR API call: compares the incoming
-    row against a fixed in-memory table and reports match / mismatch / gap.
-    """
+    """# MOCK: look up `record` against the DMR reference register."""
     reference = _DMR_REFERENCE.get(record.policy_id)
     if reference is None:
         return EnrichmentFinding(
             source="dmr",
-            status="gap",
-            details="No DMR reference record found for this policy (data gap).",
+            details="No DMR reference record found for this policy.",
             data={},
         )
-
-    mismatched = {
-        field: (record.raw.get(field), reference[field])
-        for field in _COMPARE_FIELDS
-        if record.raw.get(field) != reference[field]
-    }
-
-    if not mismatched:
-        return EnrichmentFinding(
-            source="dmr",
-            status="match",
-            details="Record matches DMR reference on all compared fields.",
-            data=dict(reference),
-        )
-
-    fields = ", ".join(mismatched)
     return EnrichmentFinding(
         source="dmr",
-        status="mismatch",
-        details=f"DMR mismatch on: {fields}.",
-        data={"reference": dict(reference), "mismatched_fields": mismatched},
+        details="Retrieved DMR reference record.",
+        data=dict(reference),
     )

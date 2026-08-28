@@ -1,6 +1,6 @@
 """Node 2, parallel branch 1 -- DMR sub-agent.
 
-Looks up/matches the record against DMR reference data (vehicle/owner
+Looks up the record against DMR reference data (vehicle/owner
 details). Composed with `db2_vehicle_subagent` into `enrich_chain` (see
 agents/enrich/agent.py), which runs both concurrently via LCEL
 `RunnableParallel`.

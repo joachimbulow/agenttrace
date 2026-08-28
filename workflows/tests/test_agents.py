@@ -54,15 +54,23 @@ def test_enrich_chain_runs_dmr_and_db2_concurrently_and_merges() -> None:
     assert isinstance(result.db2, EnrichmentFinding)
     assert result.dmr.source == "dmr"
     assert result.db2.source == "db2"
-    # This policy matches both reference tables (see services/dmr_service.py,
-    # services/db2_service.py).
-    assert result.dmr.status == "match"
-    assert result.db2.status == "match"
+    # Enrichment looks up; it does not conclude match/mismatch.
+    assert result.dmr.data
+    assert result.db2.data
 
 
 def test_diagnose_chain_converges_three_paths() -> None:
     async def _run():
-        record = RawRecord(policy_id="POL-1003", task_type="12_11", raw={"plate_number": "CD00000"})
+        record = RawRecord(
+            policy_id="POL-1003",
+            task_type="12_11",
+            raw={
+                "plate_number": "CD44444",
+                "owner_name": "Cecilie Holm",
+                "vehicle_make": "Toyota",
+                "vehicle_model": "Corolla",
+            },
+        )
         gate = GateResult(record=record, known=True, reason="ok")
         enrichment = await enrich_chain.ainvoke(gate)
         return enrichment, await diagnose_chain.ainvoke(enrichment)
@@ -71,3 +79,7 @@ def test_diagnose_chain_converges_three_paths() -> None:
 
     assert diagnosis.enrichment is enrichment
     assert {p.path for p in diagnosis.proposals} == {"dmr", "db2", "rules"}
+    by_path = {p.path: p for p in diagnosis.proposals}
+    # POL-1003: CSV plate matches DMR (CD44444), not DB2 (CD00000).
+    assert by_path["dmr"].status == "match"
+    assert by_path["db2"].status == "mismatch"

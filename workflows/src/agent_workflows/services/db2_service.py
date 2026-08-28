@@ -5,11 +5,11 @@
 Real access is read-only, request-based (ServiceNow) and constrained to
 non-production hours (see docs/workflow_design.md) -- none of that applies
 here. This module defines the interface a future, real implementation must
-satisfy (`lookup`), backed by a tiny fixed table so the pipeline produces
-varied, demoable findings.
+satisfy (`lookup`), backed by a tiny fixed table. Comparison against the
+extract happens in diagnose, not here.
 
 Deliberately independent from dmr_service's reference table: for POL-1003
-the two "sources" disagree with each other, to exercise the judge's
+the two sources disagree with each other, to exercise the judge's
 conflict-detection path.
 """
 
@@ -54,8 +54,6 @@ _DB2_VEHICLE_TABLE: dict[str, dict[str, str]] = {
     # POL-1005 intentionally absent -> simulates a DB2 data gap.
 }
 
-_COMPARE_FIELDS = ("plate_number", "owner_name", "vehicle_make", "vehicle_model")
-
 
 def lookup(record: RawRecord) -> EnrichmentFinding:
     """# MOCK: look up `record` against Primo's DB2 vehicle table."""
@@ -63,29 +61,11 @@ def lookup(record: RawRecord) -> EnrichmentFinding:
     if reference is None:
         return EnrichmentFinding(
             source="db2",
-            status="gap",
-            details="No DB2 vehicle record found for this policy (data gap).",
+            details="No DB2 vehicle record found for this policy.",
             data={},
         )
-
-    mismatched = {
-        field: (record.raw.get(field), reference[field])
-        for field in _COMPARE_FIELDS
-        if record.raw.get(field) != reference[field]
-    }
-
-    if not mismatched:
-        return EnrichmentFinding(
-            source="db2",
-            status="match",
-            details="Record matches Primo DB2 vehicle table on all compared fields.",
-            data=dict(reference),
-        )
-
-    fields = ", ".join(mismatched)
     return EnrichmentFinding(
         source="db2",
-        status="mismatch",
-        details=f"DB2 mismatch on: {fields}.",
-        data={"reference": dict(reference), "mismatched_fields": mismatched},
+        details="Retrieved DB2 vehicle record.",
+        data=dict(reference),
     )

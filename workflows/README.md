@@ -80,10 +80,10 @@ this package's existing conventions:
 
 4. "Conflict" between diagnostic paths (Node 4, judge) is defined narrowly
    as the DMR-driven and DB2-driven proposals disagreeing with each other
-   on whether an issue exists. The rules-based path contributes to which
-   proposal gets *selected* but is not itself treated as a source of
-   conflict, since it checks a different concern (format anomalies) than
-   the two source-driven paths. See `agents/judge/agent.py`.
+   on whether the status is a mismatch. The rules-based path contributes
+   to which proposal gets *selected* but is not itself treated as a source
+   of conflict, since it checks a different concern (format anomalies)
+   than the two source-driven paths. See `agents/judge/agent.py`.
 5. The orchestrator processes every record in the CSV concurrently (one
    `asyncio.gather` over all rows, each running the full gate -> ... ->
    branch chain), not sequentially -- this doesn't change the per-record

@@ -11,9 +11,9 @@ fixed/templated rationale string.
 
 Implementation choice (flag this -- it narrows open question #1 without
 fully resolving it): "conflict" is defined here as the DMR-driven and
-DB2-driven paths disagreeing on whether an issue exists. The rules-based
-path (itself an assumption, see agents/diagnose/agent.py) still counts
-toward which proposal gets *selected* -- it is treated as a
+DB2-driven paths disagreeing on whether the status is a mismatch. The
+rules-based path (itself an assumption, see agents/diagnose/agent.py)
+still counts toward which proposal gets *selected* -- it is treated as a
 supplementary/tie-breaking signal, not as a source of "conflict" -- since
 it inspects a different concern (format anomalies) than the two
 source-driven paths. Revisit once the source team confirms what the third
@@ -42,7 +42,7 @@ def _judge(diagnosis: DiagnosisResult) -> JudgeVerdict:
     conflict = (
         dmr_proposal is not None
         and db2_proposal is not None
-        and dmr_proposal.issue_found != db2_proposal.issue_found
+        and (dmr_proposal.status == "mismatch") != (db2_proposal.status == "mismatch")
     )
 
     selected = max(proposals, key=lambda p: p.confidence, default=None)

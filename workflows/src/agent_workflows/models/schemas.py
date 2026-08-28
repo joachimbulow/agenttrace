@@ -38,10 +38,14 @@ class GateResult:
 
 @dataclass(frozen=True)
 class EnrichmentFinding:
-    """One sub-agent's findings, produced independently in Node 2."""
+    """One sub-agent's lookup result, produced independently in Node 2.
+
+    `data` is the retrieved record, or `{}` when the lookup found no row.
+    `details` is a lookup note. Comparison (match / mismatch / gap) lives
+    on `DiagnosisProposal.status`, not here.
+    """
 
     source: Literal["dmr", "db2"]
-    status: Literal["match", "mismatch", "gap"]
     details: str
     data: dict[str, Any] = field(default_factory=dict)
 
@@ -60,7 +64,7 @@ class DiagnosisProposal:
     """One diagnostic path's proposal, produced independently in Node 3."""
 
     path: Literal["dmr", "db2", "rules"]
-    issue_found: bool
+    status: Literal["match", "mismatch", "gap"]
     proposed_correction: str | None
     rationale: str
     confidence: float

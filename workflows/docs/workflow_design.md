@@ -19,15 +19,15 @@ Filter before any enrichment. Only recognized task types proceed (PoC scope: jus
 Input: raw row(s) from the CSV extract. Output: `known` (bool) + the classified task, or an early-exit record.
 
 ### Node 2 — Enrich (fan-out, 2 parallel sub-agents)
-- **DMR Sub-agent**: looks up/matches the record against DMR reference data (vehicle/owner details). Produces DMR-side findings (match / mismatch / gap).
-- **DB2 Vehicle Sub-agent**: queries Primo's DB2 for the corresponding vehicle/policy record, produces DB2-side findings.
+- **DMR Sub-agent**: looks up the record against DMR reference data (vehicle/owner details). Produces a DMR-side finding (retrieved row, or empty data if none).
+- **DB2 Vehicle Sub-agent**: queries Primo's DB2 for the corresponding vehicle/policy record, produces a DB2-side finding (same shape). Comparison (match / mismatch / gap) happens in Node 3.
 These run independently (implement as genuinely concurrent, e.g. asyncio.gather) and their outputs are merged before diagnosis. Assumption to confirm: sub-agents don't call live DB2/DMR in the PoC — both are mocked.
 
 ### Node 3 — Diagnose / Propose (three parallel paths converge)
 1. Diagnosis driven by DMR findings
 2. Diagnosis driven by DB2 findings
 3. Diagnosis driven by rule/pattern checks (segmentation/locking-style business rules)
-(See open question #1 above — this third path is an assumption.) Each path proposes a correction (or "no issue found") with rationale + confidence score. Implement these 3 as genuinely concurrent too.
+(See open question #1 above — this third path is an assumption.) Each path compares the extract to its finding (or to a rule), then proposes a correction (or "no issue found") with status, rationale, and confidence. Implement these 3 as genuinely concurrent too.
 
 ### Node 4 — LLM as a Judge
 Reviews the (possibly conflicting) proposals from the three diagnostic paths and adjudicates a single recommended outcome + confidence. For this scaffold, MOCK the "LLM" call (no real LLM API call) — implement as a deterministic stub that picks the highest-confidence proposal (or flags conflict) and returns a fixed/templated rationale string, clearly marked as a placeholder for a real LLM call later.

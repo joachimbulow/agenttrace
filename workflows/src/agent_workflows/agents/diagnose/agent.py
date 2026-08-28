@@ -15,16 +15,18 @@ runtime locking mechanism.
 
 Each path proposes a correction (or "no issue found") with rationale +
 confidence, per the non-functional requirement that every step's output
-carries rationale and confidence rather than a bare pass/fail. The three
-paths are composed via LCEL `RunnableParallel`, which runs them
-concurrently and gives each its own trace span nested under `diagnose`
-(see agents/enrich/agent.py for the same pattern, and utils/tracing.py for
-how nested spans are detected).
+carries rationale and confidence rather than a bare pass/fail. Match /
+mismatch / gap is decided here from the enrichment data, not inherited
+from it. The three paths are composed via LCEL `RunnableParallel`, which
+runs them concurrently and gives each its own trace span nested under
+`diagnose` (see agents/enrich/agent.py for the same pattern, and
+utils/tracing.py for how nested spans are detected).
 """
 
 from __future__ import annotations
 
 import re
+from typing import Literal
 
 from langchain_core.runnables import (
     Runnable,
@@ -34,66 +36,70 @@ from langchain_core.runnables import (
     RunnablePassthrough,
 )
 
-from agent_workflows.models.schemas import DiagnosisProposal, DiagnosisResult, EnrichmentResult
+from agent_workflows.models.schemas import (
+    DiagnosisProposal,
+    DiagnosisResult,
+    EnrichmentFinding,
+    EnrichmentResult,
+    RawRecord,
+)
 from agent_workflows.pipeline.state import PipelineState
 from agent_workflows.utils.tracing import leaf
 
 # Placeholder "business rule": a plausible Danish-style plate format.
 # Stands in for a real segmentation/locking rule check (see module docstring).
 _PLATE_PATTERN = re.compile(r"^[A-Z]{2}\d{5}$")
+_COMPARE_FIELDS = ("plate_number", "owner_name", "vehicle_make", "vehicle_model")
+
+
+def _diagnose_against_source(
+    path: Literal["dmr", "db2"],
+    finding: EnrichmentFinding,
+    record: RawRecord,
+    source_label: str,
+) -> DiagnosisProposal:
+    if not finding.data:
+        return DiagnosisProposal(
+            path=path,
+            status="gap",
+            proposed_correction=None,
+            rationale=f"{path.upper()} path: {finding.details} -- cannot diagnose without reference data.",
+            confidence=0.35,
+        )
+
+    mismatched = [
+        field
+        for field in _COMPARE_FIELDS
+        if record.raw.get(field) != finding.data.get(field)
+    ]
+    if not mismatched:
+        return DiagnosisProposal(
+            path=path,
+            status="match",
+            proposed_correction=None,
+            rationale=f"{path.upper()} path: record matches {source_label} on all compared fields.",
+            confidence=0.95,
+        )
+
+    fields = ", ".join(mismatched)
+    return DiagnosisProposal(
+        path=path,
+        status="mismatch",
+        proposed_correction=f"Align record with {source_label} ({fields}).",
+        rationale=f"{path.upper()} path: mismatch on {fields}.",
+        confidence=0.85,
+    )
 
 
 def _diagnose_from_dmr(enrichment: EnrichmentResult) -> DiagnosisProposal:
-    finding = enrichment.dmr
-    if finding.status == "match":
-        return DiagnosisProposal(
-            path="dmr",
-            issue_found=False,
-            proposed_correction=None,
-            rationale=f"DMR path: {finding.details}",
-            confidence=0.95,
-        )
-    if finding.status == "mismatch":
-        return DiagnosisProposal(
-            path="dmr",
-            issue_found=True,
-            proposed_correction=f"Align record with DMR reference ({finding.details})",
-            rationale=f"DMR path: {finding.details}",
-            confidence=0.85,
-        )
-    return DiagnosisProposal(
-        path="dmr",
-        issue_found=False,
-        proposed_correction=None,
-        rationale=f"DMR path: {finding.details} -- cannot diagnose without reference data.",
-        confidence=0.35,
+    return _diagnose_against_source(
+        "dmr", enrichment.dmr, enrichment.gate.record, "DMR reference"
     )
 
 
 def _diagnose_from_db2(enrichment: EnrichmentResult) -> DiagnosisProposal:
-    finding = enrichment.db2
-    if finding.status == "match":
-        return DiagnosisProposal(
-            path="db2",
-            issue_found=False,
-            proposed_correction=None,
-            rationale=f"DB2 path: {finding.details}",
-            confidence=0.95,
-        )
-    if finding.status == "mismatch":
-        return DiagnosisProposal(
-            path="db2",
-            issue_found=True,
-            proposed_correction=f"Align record with Primo DB2 ({finding.details})",
-            rationale=f"DB2 path: {finding.details}",
-            confidence=0.85,
-        )
-    return DiagnosisProposal(
-        path="db2",
-        issue_found=False,
-        proposed_correction=None,
-        rationale=f"DB2 path: {finding.details} -- cannot diagnose without reference data.",
-        confidence=0.35,
+    return _diagnose_against_source(
+        "db2", enrichment.db2, enrichment.gate.record, "Primo DB2"
     )
 
 
@@ -103,14 +109,14 @@ def _diagnose_from_rules(enrichment: EnrichmentResult) -> DiagnosisProposal:
     if _PLATE_PATTERN.match(plate):
         return DiagnosisProposal(
             path="rules",
-            issue_found=False,
+            status="match",
             proposed_correction=None,
             rationale=f"Rules path: plate '{plate}' passes format check; no anomaly detected.",
             confidence=0.7,
         )
     return DiagnosisProposal(
         path="rules",
-        issue_found=True,
+        status="mismatch",
         proposed_correction="Flag for manual plate-format review.",
         rationale=f"Rules path: plate '{plate}' fails expected format check.",
         confidence=0.6,

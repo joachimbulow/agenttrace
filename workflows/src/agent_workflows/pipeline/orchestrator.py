@@ -61,7 +61,8 @@ workflows/README.md, which repeats this list for visibility.
    placeholder, not calibrated against real data or SME input.
 
 See also `agents/judge/agent.py` for a fourth, narrower implementation
-choice about how "conflict" is defined between the DMR and DB2 paths.
+choice about how "conflict" is defined between the DMR and DB2 paths
+(disagreeing on whether status is a mismatch).
 ================================================================================
 """
 
