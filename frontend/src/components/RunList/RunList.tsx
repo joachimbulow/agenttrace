@@ -6,14 +6,7 @@ export interface RunListProps {
   selectedRunId: string | null;
 }
 
-/**
- * Run picker for the sidebar.
- *
- * A run is a container, not the thing you watch — pick one to get at its
- * records. See docs/decisions/0002-record-as-unit-of-observation.md.
- *
- * `useRuns` polls, so a run started from a terminal shows up on its own.
- */
+/** Sidebar run picker. A run is a container — pick one to get at its records. ADR-0002. */
 export function RunList({ onSelectRun, selectedRunId }: RunListProps) {
   const { data, loading, error, refetch } = useRuns({ limit: 50 });
 

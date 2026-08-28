@@ -7,13 +7,7 @@ export interface RunListItemProps {
   onSelect: () => void;
 }
 
-/**
- * Compact run entry for the sidebar.
- *
- * Deliberately shows no status badge: run-level completion isn't tracked,
- * so every run reports `running` forever and the badge would be a lie on
- * every run. See docs/decisions/0004-defer-run-completion.md.
- */
+/** No status badge — run-level completion isn't tracked, so every run would lie "running". ADR-0004. */
 export function RunListItem({ run, isSelected, onSelect }: RunListItemProps) {
   return (
     <button

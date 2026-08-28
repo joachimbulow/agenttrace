@@ -23,5 +23,5 @@ async def _dmr_lookup(gate: GateResult) -> EnrichmentFinding:
 
 
 dmr_chain: Runnable[GateResult, EnrichmentFinding] = leaf(
-    RunnableLambda(_dmr_lookup), "dmr_subagent"
+    RunnableLambda(_dmr_lookup), "dmr_subagent", span_type="tool_call"
 )

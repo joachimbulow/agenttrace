@@ -48,12 +48,22 @@ DEFAULT_INGEST_ENDPOINT = "http://localhost:8000/api/v1/ingest/events"
 # which never carry this tag.
 LEAF_TAG = "agent_workflows:leaf"
 
+# Metadata key carrying a leaf's span type. Deliberately not "span_type":
+# graph-node metadata propagates into everything nested inside the node and
+# wins the merge, so a leaf reusing that key would always read back the
+# node's value instead of its own.
+LEAF_SPAN_TYPE_KEY = "leaf_span_type"
+
 
 def ingest_endpoint() -> str:
     return os.environ.get("AGENTTRACE_ENDPOINT", DEFAULT_INGEST_ENDPOINT)
 
 
-def leaf(chain: Runnable[Any, Any], name: str) -> Runnable[Any, Any]:
+def leaf(
+    chain: Runnable[Any, Any],
+    name: str,
+    span_type: str = "step",
+) -> Runnable[Any, Any]:
     """Mark `chain` as a traced leaf span named `name`.
 
     Only bind this on the parallel sub-agents inside a node (dmr/db2
@@ -61,8 +71,22 @@ def leaf(chain: Runnable[Any, Any], name: str) -> Runnable[Any, Any]:
     are already fully represented by their own node-level span (see
     `AgentTraceCallbackHandler`), so tagging them here would just create a
     redundant nested span with the same name.
+
+    `span_type` drives how the span is rendered. Pass "tool_call" for a
+    sub-agent whose work is a call out to another system, so it is
+    distinguishable from in-process reasoning steps.
+
+    It travels under its own key rather than reusing `span_type`, because
+    a graph node's metadata propagates down to everything inside it and
+    the inherited value wins the merge: a leaf setting `span_type` inside
+    a node declared `metadata={"span_type": "step"}` would silently keep
+    the node's value.
     """
-    return chain.with_config(run_name=name, tags=[LEAF_TAG])
+    return chain.with_config(
+        run_name=name,
+        tags=[LEAF_TAG],
+        metadata={LEAF_SPAN_TYPE_KEY: span_type},
+    )
 
 
 def _to_jsonable(value: Any) -> Any:
@@ -81,13 +105,7 @@ def _to_jsonable(value: Any) -> Any:
 
 
 class AgentTraceCallbackHandler(AsyncCallbackHandler):
-    """Bridges LangChain/LangGraph chain-run events to agent_trace_sdk spans.
-
-    Stateless across pipeline runs: per-run_id bookkeeping is popped as
-    soon as a run ends, so this handler is safe to share as a single
-    long-lived instance across many concurrent `graph.ainvoke()` calls.
-    """
-
+    """Bridges LangChain/LangGraph chain-run events to our custom agent_trace_sdk spans."""
     def __init__(self) -> None:
         self._parents: dict[UUID, UUID | None] = {}
         self._spans: dict[UUID, Span] = {}
@@ -119,6 +137,7 @@ class AgentTraceCallbackHandler(AsyncCallbackHandler):
         name: str | None = None,
         **kwargs: Any,
     ) -> None:
+        """Bound to a langchain start."""
         self._parents[run_id] = parent_run_id
 
         tracer = Tracer.get_instance()
@@ -133,7 +152,14 @@ class AgentTraceCallbackHandler(AsyncCallbackHandler):
 
         span_name = node_name or name or "run"
         default_span_type = "agent_run" if is_root else "step"
-        span_type = (metadata or {}).get("span_type", default_span_type)
+        meta = metadata or {}
+        # A leaf reads its own key; anything else reads the node's. See
+        # LEAF_SPAN_TYPE_KEY for why they cannot share one.
+        span_type = (
+            meta.get(LEAF_SPAN_TYPE_KEY, default_span_type)
+            if is_leaf
+            else meta.get("span_type", default_span_type)
+        )
         parent_span = self._resolve_parent(parent_run_id)
 
         attributes: dict[str, Any] = {}

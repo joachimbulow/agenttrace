@@ -1,6 +1,4 @@
-// Records of the selected run. A record is one item of work through the
-// pipeline and is what the canvas renders.
-// See docs/decisions/0002-record-as-unit-of-observation.md.
+// Records of the selected run — one pipeline item each, what the canvas renders. ADR-0002.
 
 import { RecordStatus, type RecordSummary } from '../../types';
 import { cn } from '../../lib/utils';
@@ -43,8 +41,7 @@ export function RecordList({
   }
 
   if (records.length === 0) {
-    // A record can't exist before its first span, so an in-flight run legitimately
-    // shows nothing for a moment.
+    // Empty is valid: a record doesn't exist until its first span.
     return (
       <p className="px-3 py-2 text-xs text-muted-foreground">
         No records have started yet.

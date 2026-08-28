@@ -5,12 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getRecord, listRecords } from '../api/client';
 import type { RecordListResponse, RecordTreeResponse } from '../types';
 
-/**
- * Records in a run, refetched whenever the run changes.
- *
- * `rev` comes from the currently-open record stream. Records that start
- * after the list was first loaded therefore appear on their own.
- */
+/** Records in a run. `rev` from the open stream so new records appear on their own. */
 export function useRecords(runId: string | null, rev: number) {
   const [data, setData] = useState<RecordListResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,8 +19,7 @@ export function useRecords(runId: string | null, rev: number) {
     }
 
     let cancelled = false;
-    // Only the first load blocks the UI; later refetches swap data
-    // underneath so the list doesn't flash on every ping.
+    // First load blocks; later pings swap data underneath (no flash).
     setLoading((current) => current || data === null);
 
     listRecords(runId)
@@ -45,20 +39,14 @@ export function useRecords(runId: string | null, rev: number) {
     return () => {
       cancelled = true;
     };
-    // `data` is deliberately not a dependency — it is read only to decide
-    // whether this is the first load.
+    // `data` is read only to detect the first load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runId, rev]);
 
   return { data, loading, error };
 }
 
-/**
- * A record's full subtree, refetched whenever the record's run changes.
- *
- * This is the canvas's data source. The response is a complete snapshot,
- * so the canvas never reconstructs state from deltas.
- */
+/** Full subtree snapshot for the canvas. Refetched when the record's `rev` advances. */
 export function useRecord(recordId: string | null, rev: number) {
   const [data, setData] = useState<RecordTreeResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -69,8 +57,7 @@ export function useRecord(recordId: string | null, rev: number) {
     setError(null);
   }, []);
 
-  // Drop the previous record's tree the moment the selection changes, so
-  // the canvas never renders one record's cards under another record's header.
+  // Clear immediately so the canvas never shows the previous record's cards.
   useEffect(() => {
     clear();
   }, [recordId, clear]);

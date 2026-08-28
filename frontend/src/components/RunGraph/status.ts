@@ -5,12 +5,7 @@ import type { TraceNode } from '../../types';
 
 export type CardStatus = 'running' | 'completed' | 'error';
 
-/**
- * A card's status.
- *
- * `error` is the reason the record endpoint carries event payloads inline:
- * a failure exists only as an `error` event on the span, not as a column.
- */
+/** Error event on the span beats `ended_at` — failure isn't a column. */
 export function cardStatus(node: TraceNode): CardStatus {
   if (node.events.some((event) => event.event_type === 'error')) {
     return 'error';

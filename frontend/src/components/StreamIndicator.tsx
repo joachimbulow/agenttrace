@@ -1,9 +1,5 @@
-// Honest readout of the live subscription.
-//
-// Two states, not three: there is no "ended", because run completion isn't
-// tracked yet and a finished run's stream just sits idle. Showing a grey
-// "disconnected" dot at the end of a run would read as a failure.
-// See docs/decisions/0004-defer-run-completion.md.
+// Live readout. No "ended" — a finished run's stream sits idle, and a grey
+// disconnected dot would read as failure. ADR-0004.
 
 import { useEffect, useState } from 'react';
 import type { StreamStatus } from '../hooks/useRecordStream';
@@ -47,13 +43,7 @@ export function StreamIndicator({ status, lastPingAt }: StreamIndicatorProps) {
   );
 }
 
-/**
- * Ticking "0.4s ago" readout.
- *
- * Reassurance on a slow record: the pipeline can sit inside one span for
- * several seconds with nothing visibly changing, and a stalled-looking
- * canvas is indistinguishable from a broken one without this.
- */
+/** Ticking "0.4s ago" — a slow span looks stalled without it. */
 function useElapsed(since: number | null): string | null {
   const [, force] = useState(0);
 

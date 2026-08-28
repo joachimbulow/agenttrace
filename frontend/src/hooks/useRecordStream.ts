@@ -1,17 +1,11 @@
-// Live subscription to a record's invalidation stream.
-//
-// The stream carries no span data — only "this record changed, refetch it".
+// Live subscription. Pings mean "this record changed, refetch it" — no span data.
 // See docs/decisions/0001-invalidation-bus-over-event-stream.md.
 
 import { useEffect, useRef, useState } from 'react';
 import { recordEventsUrl } from '../api/client';
 import type { RecordInvalidation } from '../types';
 
-/**
- * Two states, not three. There is no `ended`: run completion isn't tracked
- * yet, so a finished run's stream simply sits idle emitting keepalives.
- * See docs/decisions/0004-defer-run-completion.md.
- */
+/** No `ended` yet — a finished run's stream just sits idle. ADR-0004. */
 export type StreamStatus = 'idle' | 'connecting' | 'live' | 'reconnecting';
 
 export interface RecordStream {
@@ -22,20 +16,9 @@ export interface RecordStream {
   lastPingAt: number | null;
 }
 
-/**
- * Server heartbeat interval, mirrored from
- * `presentation/routers/records.py:KEEPALIVE_SECONDS`.
- */
+/** Mirrors `presentation/routers/records.py:KEEPALIVE_SECONDS`. */
 const HEARTBEAT_MS = 10_000;
-
-/**
- * How long without any frame before we stop claiming to be live.
- *
- * `EventSource` never times out a silent socket, so if the backend process
- * dies without closing the TCP connection the browser notices nothing and
- * the indicator would read "Live" indefinitely. Two and a half missed
- * heartbeats is the tolerance.
- */
+/** EventSource won't notice a dead socket; 2.5 missed heartbeats = stale. */
 const STALE_AFTER_MS = HEARTBEAT_MS * 2.5;
 
 export function useRecordStream(recordId: string | null): RecordStream {
@@ -43,10 +26,8 @@ export function useRecordStream(recordId: string | null): RecordStream {
   const [rev, setRev] = useState(0);
   const [lastPingAt, setLastPingAt] = useState<number | null>(null);
 
-  // Survives reconnects: EventSource retries on its own, and a retry must
-  // not look like a fresh subscription that resets everything.
+  // Survives EventSource's own retries — a retry isn't a fresh subscription.
   const hasConnected = useRef(false);
-  // Any frame, heartbeat included — this is the liveness clock.
   const lastFrameAt = useRef<number>(0);
 
   useEffect(() => {
@@ -76,8 +57,6 @@ export function useRecordStream(recordId: string | null): RecordStream {
       try {
         ping = JSON.parse(event.data);
       } catch {
-        // A malformed frame is not worth tearing the stream down for;
-        // the next ping supersedes it anyway.
         return;
       }
 
@@ -85,24 +64,18 @@ export function useRecordStream(recordId: string | null): RecordStream {
       lastFrameAt.current = Date.now();
       setStatus('live');
 
-      // A heartbeat proves the backend is alive but nothing changed, so it
-      // must not reset the "updated Ns ago" readout — that would make a
-      // stalled run look busy.
+      // Heartbeats prove liveness; they must not reset "updated Ns ago".
       if (!ping.heartbeat) setLastPingAt(Date.now());
 
-      // Monotonic guard: a stale frame after a reconnect must not make
-      // consumers refetch backwards.
       setRev((current) => (ping.rev > current ? ping.rev : current));
     };
 
     source.onerror = () => {
-      // EventSource reconnects itself; this only reports that it is doing
-      // so. Before the first successful open, keep saying `connecting` —
-      // "reconnecting" would imply we ever had a connection.
+      // EventSource reconnects itself. Don't say `reconnecting` until we've opened once.
       setStatus(hasConnected.current ? 'reconnecting' : 'connecting');
     };
 
-    // Watchdog for the silent-death case that `onerror` never catches.
+    // Catches silent death that `onerror` never fires for.
     const watchdog = window.setInterval(() => {
       if (Date.now() - lastFrameAt.current > STALE_AFTER_MS) {
         setStatus((current) => (current === 'live' ? 'reconnecting' : current));

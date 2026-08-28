@@ -62,10 +62,7 @@ export interface TraceTreeResponse {
 }
 
 // === Records ===
-//
-// A record is one item of work through the pipeline — the unit the canvas
-// renders. It is a projection over spans: `id` IS the record root span's
-// id. See docs/decisions/0002-record-as-unit-of-observation.md.
+// One pipeline item — the canvas unit. `id` is the root span's id. ADR-0002.
 
 export enum RecordStatus {
   RUNNING = 'running',
@@ -98,10 +95,7 @@ export interface RecordTreeResponse {
   root: TraceNode;
 }
 
-/**
- * One invalidation ping. Carries no span data — it means only "this record
- * changed, refetch it". See ADR-0001.
- */
+/** Invalidation ping: no span data, just "refetch this record". ADR-0001. */
 export interface RecordInvalidation {
   record_id: string;
   run_id: string;

@@ -4,14 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { listRuns } from '../api/client';
 import type { RunListResponse } from '../types';
 
-/**
- * How often to re-poll the run list.
- *
- * Runs are the one thing not covered by the invalidation stream: you can
- * only subscribe to a record, and you can't know a record before you know its
- * run. Without this poll, starting the workflow from a terminal would
- * leave the sidebar empty until a manual refresh.
- */
+/** Poll interval. Runs aren't on the invalidation stream — you need a run before you can subscribe to a record. */
 const RUN_LIST_POLL_MS = 2000;
 
 export function useRuns(params: {
@@ -27,8 +20,7 @@ export function useRuns(params: {
 
   const fetch = useCallback(
     async (options: { quiet?: boolean } = {}) => {
-      // Poll refetches must not put the list back into its loading state,
-      // or the sidebar flickers every two seconds.
+      // Poll must not flash the list back into loading.
       if (!options.quiet) setLoading(true);
       try {
         const result = await listRuns({ limit, offset, status });

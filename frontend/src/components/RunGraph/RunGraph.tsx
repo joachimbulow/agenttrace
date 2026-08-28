@@ -31,9 +31,7 @@ interface RunGraphProps {
 function Canvas({ root, selectedNodeId, onSelectNode }: Omit<RunGraphProps, 'loading' | 'record'>) {
   const { fitView } = useReactFlow();
 
-  // Ids we have already rendered. A card is animated in only on the tick
-  // it first appears — this is how spawn is detected now that the client
-  // receives whole snapshots rather than span_start events (ADR-0003).
+  // Spawn = first tick a card appears (snapshots, not span_start — ADR-0003).
   const seenIds = useRef<Set<string>>(new Set());
   const nodeCount = root ? collectIds(root).length : 0;
 
@@ -47,8 +45,7 @@ function Canvas({ root, selectedNodeId, onSelectNode }: Omit<RunGraphProps, 'loa
       id: node.id,
       type: 'agentCard',
       position: { x, y },
-      // React Flow needs the size up front to route edges; the card itself
-      // is fixed-size for now (fluid resize is deferred).
+      // Size is required up front to route edges.
       width: CARD_WIDTH,
       height: CARD_HEIGHT,
       data: {
@@ -75,8 +72,7 @@ function Canvas({ root, selectedNodeId, onSelectNode }: Omit<RunGraphProps, 'loa
     if (root) seenIds.current = new Set(collectIds(root));
   }, [root]);
 
-  // Keep the whole record in frame as it grows, but only when the shape
-  // actually changed — refitting on every ping would fight the user's pan.
+  // Refit when the tree grows, not on every ping (that fights pan).
   useEffect(() => {
     if (nodeCount === 0) return;
     const timer = window.setTimeout(() => {
@@ -118,8 +114,6 @@ export function RunGraph({ root, record, selectedNodeId, onSelectNode, loading }
     return loading ? (
       <EmptyState title="Loading record…" hint={null} />
     ) : (
-      // A started record whose spans haven't landed yet is a valid live state,
-      // distinct from "nothing selected".
       <EmptyState title="Waiting for the first span" hint={record.name} />
     );
   }

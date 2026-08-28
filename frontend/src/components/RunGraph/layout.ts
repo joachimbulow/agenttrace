@@ -1,26 +1,15 @@
-// Tidy-tree layout, recomputed from the full snapshot on every tick.
-//
-// A trace is a tree, not a DAG — no cycles, one parent per node — so
-// dagre's rank assignment and cycle breaking buy nothing here. Forty lines
-// of Reingold-Tilford does the job with no dependency.
-//
-// Laid out LEFT-TO-RIGHT: depth is a column, siblings stack vertically.
-// A record of the Primo pipeline is ~3 levels deep and ~7 wide, so top-down
-// produces a very wide, very short tree that fitView has to shrink to
-// roughly a third scale before it fits a landscape window. Rotating it
-// puts the long axis on the screen's long axis and keeps cards readable.
-//
 // See docs/decisions/0003-layout-per-tick-over-incremental-spawn.md.
-
 import type { TraceNode } from '../../types';
 
-export const CARD_WIDTH = 216;
+export const CARD_WIDTH = 196;
 export const CARD_HEIGHT = 84;
 
-/** Gap between depth columns. */
-const COLUMN_GAP = 72;
-/** Gap between stacked siblings. */
-const ROW_GAP = 22;
+/** Horizontal gap between time slots. */
+const SLOT_GAP = 34;
+/** Vertical gap between depth bands. */
+const BAND_GAP = 58;
+/** Vertical gap between concurrent siblings sharing one slot. */
+const STACK_GAP = 16;
 
 export interface PlacedNode {
   node: TraceNode;
@@ -36,58 +25,119 @@ export interface Layout {
   height: number;
 }
 
-/**
- * Place every node in a record's subtree.
- *
- * Leaves take sequential vertical slots; a parent centres against its
- * children. Depth maps to a fixed column. The result depends only on the
- * tree's shape and ordering, never on arrival order or previous layouts,
- * so an unchanged subtree lands in exactly the same place on the next tick
- * and does not jitter.
- */
-export function layoutTree(root: TraceNode): Layout {
-  const placed: PlacedNode[] = [];
-  const edges: Layout['edges'] = [];
-  let nextLeafSlot = 0;
+interface Slot {
+  depth: number;
+  /** Index within a stack of concurrent siblings sharing this slot. */
+  stackIndex: number;
+  x: number;
+}
 
-  const place = (node: TraceNode, depth: number): number => {
-    let centre: number;
+/** Overlapping finished intervals. Unfinished spans stay ungrouped — no end would swallow every later sibling. */
+function concurrencyGroups(children: TraceNode[]): TraceNode[][] {
+  const groups: TraceNode[][] = [];
+  let groupEnd = -Infinity;
 
-    if (node.children.length === 0) {
-      centre = nextLeafSlot * (CARD_HEIGHT + ROW_GAP);
-      nextLeafSlot += 1;
+  for (const child of children) {
+    const start = Date.parse(child.started_at);
+    const end = child.ended_at ? Date.parse(child.ended_at) : null;
+    const last = groups[groups.length - 1];
+
+    if (last && end !== null && start < groupEnd) {
+      last.push(child);
+      groupEnd = Math.max(groupEnd, end);
     } else {
-      const childCentres = node.children.map((child) => {
-        edges.push({ id: `${node.id}->${child.id}`, source: node.id, target: child.id });
-        return place(child, depth + 1);
-      });
-      centre = (childCentres[0] + childCentres[childCentres.length - 1]) / 2;
+      groups.push([child]);
+      groupEnd = end ?? -Infinity;
     }
+  }
 
-    placed.push({
-      node,
-      depth,
-      x: depth * (CARD_WIDTH + COLUMN_GAP),
-      y: centre,
-    });
+  return groups;
+}
 
-    return centre;
+/** Place the tree from shape, order, and timings. Same tree → same positions. */
+export function layoutTree(root: TraceNode): Layout {
+  const slots = new Map<string, Slot>();
+  const edges: Layout['edges'] = [];
+  let nextSlotX = 0;
+
+  const takeSlot = (): number => {
+    const x = nextSlotX;
+    nextSlotX += CARD_WIDTH + SLOT_GAP;
+    return x;
   };
 
-  place(root, 0);
+  // Pass 1: depth, slot, stack index.
+  const assign = (node: TraceNode, depth: number): number => {
+    if (node.children.length === 0) {
+      const x = takeSlot();
+      slots.set(node.id, { depth, stackIndex: 0, x });
+      return x;
+    }
+
+    const centres: number[] = [];
+
+    for (const group of concurrencyGroups(node.children)) {
+      // Leaves only — a subtree still needs its own horizontal room.
+      const stackable = group.length > 1 && group.every((c) => c.children.length === 0);
+
+      if (stackable) {
+        const x = takeSlot();
+        group.forEach((child, index) => {
+          edges.push({ id: `${node.id}->${child.id}`, source: node.id, target: child.id });
+          slots.set(child.id, { depth: depth + 1, stackIndex: index, x });
+        });
+        centres.push(x);
+      } else {
+        for (const child of group) {
+          edges.push({ id: `${node.id}->${child.id}`, source: node.id, target: child.id });
+          centres.push(assign(child, depth + 1));
+        }
+      }
+    }
+
+    const x = (centres[0] + centres[centres.length - 1]) / 2;
+    slots.set(node.id, { depth, stackIndex: 0, x });
+    return x;
+  };
+
+  assign(root, 0);
+
+  // Pass 2: band height = deepest stack at that depth.
+  const bandStack = new Map<number, number>();
+  for (const slot of slots.values()) {
+    bandStack.set(slot.depth, Math.max(bandStack.get(slot.depth) ?? 1, slot.stackIndex + 1));
+  }
+
+  const bandTop = new Map<number, number>();
+  let y = 0;
+  for (const depth of [...bandStack.keys()].sort((a, b) => a - b)) {
+    bandTop.set(depth, y);
+    const rows = bandStack.get(depth) ?? 1;
+    y += rows * CARD_HEIGHT + (rows - 1) * STACK_GAP + BAND_GAP;
+  }
+
+  const placed: PlacedNode[] = [];
+  const collect = (node: TraceNode) => {
+    const slot = slots.get(node.id);
+    if (slot) {
+      placed.push({
+        node,
+        depth: slot.depth,
+        x: slot.x,
+        y: (bandTop.get(slot.depth) ?? 0) + slot.stackIndex * (CARD_HEIGHT + STACK_GAP),
+      });
+    }
+    node.children.forEach(collect);
+  };
+  collect(root);
 
   const maxX = placed.reduce((max, p) => Math.max(max, p.x), 0);
   const maxY = placed.reduce((max, p) => Math.max(max, p.y), 0);
 
-  return {
-    placed,
-    edges,
-    width: maxX + CARD_WIDTH,
-    height: maxY + CARD_HEIGHT,
-  };
+  return { placed, edges, width: maxX + CARD_WIDTH, height: maxY + CARD_HEIGHT };
 }
 
-/** Depth-first list of node ids, for spawn diffing against the last tick. */
+/** DFS node ids, for spawn diffing. */
 export function collectIds(root: TraceNode): string[] {
   const ids: string[] = [];
   const walk = (node: TraceNode) => {

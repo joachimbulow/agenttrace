@@ -13,15 +13,7 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
-/**
- * Absolute URL for an endpoint, for consumers that can't go through
- * `fetchApi` — notably `EventSource`, which takes a URL, not a request.
- *
- * Deliberately derived from the same base: docker-compose sets
- * VITE_API_URL to the host without the /api/v1 suffix the default has, so
- * hand-concatenating a stream URL elsewhere would work in dev and break in
- * Docker.
- */
+/** Absolute URL — EventSource can't go through `fetchApi`. Same base as fetch so Docker's VITE_API_URL doesn't break streams. */
 export function apiUrl(endpoint: string): string {
   return `${API_BASE_URL}${endpoint}`;
 }

@@ -8,10 +8,7 @@ import { useRecordStream } from './hooks/useRecordStream';
 import { useRecord, useRecords } from './hooks/useRecords';
 import './App.css';
 
-/**
- * Selection lives in the URL so a view is linkable and survives a reload.
- * `record` is the one the canvas renders; `run` scopes the record list.
- */
+/** Selection in the URL: `run` scopes the list, `record` is the canvas. */
 interface Selection {
   runId: string | null;
   recordId: string | null;
@@ -35,9 +32,7 @@ function App() {
 
   useEffect(() => writeSelection(selection), [selection]);
 
-  // One subscription drives everything. The ping carries the run, so the
-  // record list and the canvas both refresh off the same stream rather than
-  // opening a connection each. See ADR-0001.
+  // One stream: the ping carries the run, so list + canvas share it. ADR-0001.
   const stream = useRecordStream(selection.recordId);
 
   const { data: recordList, loading: recordsLoading, error: recordsError } = useRecords(

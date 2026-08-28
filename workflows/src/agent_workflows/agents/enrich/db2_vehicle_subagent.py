@@ -23,5 +23,5 @@ async def _db2_lookup(gate: GateResult) -> EnrichmentFinding:
 
 
 db2_chain: Runnable[GateResult, EnrichmentFinding] = leaf(
-    RunnableLambda(_db2_lookup), "db2_vehicle_subagent"
+    RunnableLambda(_db2_lookup), "db2_vehicle_subagent", span_type="tool_call"
 )

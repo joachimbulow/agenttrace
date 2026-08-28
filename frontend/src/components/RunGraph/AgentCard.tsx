@@ -2,6 +2,7 @@
 // are the product; the canvas is a quiet surface behind them.
 
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { Bot, ChevronRight, Sparkles, Wrench, type LucideIcon } from 'lucide-react';
 import { SpanType, type TraceNode } from '../../types';
 import { cardStatus, formatDuration, type CardStatus } from './status';
 import { CARD_HEIGHT, CARD_WIDTH } from './layout';
@@ -9,7 +10,7 @@ import { cn } from '../../lib/utils';
 
 export interface AgentCardData extends Record<string, unknown> {
   node: TraceNode;
-  /** True on the first tick this card exists, driving the spawn animation. */
+  /** First tick this card exists — drives spawn. */
   isNew: boolean;
   selected: boolean;
   onSelect: (nodeId: string) => void;
@@ -27,13 +28,39 @@ const STATUS_RING: Record<CardStatus, string> = {
   error: 'border-[oklch(var(--destructive)/0.6)]',
 };
 
-// llm_call and agent_run get their own hues: the two span types worth
-// spotting without reading the label.
-const TYPE_CHIP: Record<SpanType, string> = {
-  [SpanType.AGENT_RUN]: 'bg-[oklch(var(--brand-bg))] text-[oklch(var(--brand-fg))]',
-  [SpanType.LLM_CALL]: 'bg-[oklch(var(--llm-bg))] text-[oklch(var(--llm-fg))]',
-  [SpanType.TOOL_CALL]: 'bg-[oklch(var(--info-bg))] text-[oklch(var(--info-fg))]',
-  [SpanType.STEP]: 'bg-secondary text-secondary-foreground',
+interface TypeStyle {
+  label: string;
+  icon: LucideIcon;
+  chip: string;
+  /** Left-edge accent when the chip is too small to read. */
+  spine: string;
+}
+
+const TYPE_STYLE: Record<SpanType, TypeStyle> = {
+  [SpanType.AGENT_RUN]: {
+    label: 'agent',
+    icon: Bot,
+    chip: 'bg-[oklch(var(--brand-bg))] text-[oklch(var(--brand-fg))]',
+    spine: 'bg-[oklch(var(--primary))]',
+  },
+  [SpanType.LLM_CALL]: {
+    label: 'llm',
+    icon: Sparkles,
+    chip: 'bg-[oklch(var(--llm-bg))] text-[oklch(var(--llm-fg))]',
+    spine: 'bg-[oklch(var(--llm-fg))]',
+  },
+  [SpanType.TOOL_CALL]: {
+    label: 'tool',
+    icon: Wrench,
+    chip: 'bg-[oklch(var(--info-bg))] text-[oklch(var(--info-fg))]',
+    spine: 'bg-[oklch(var(--info))]',
+  },
+  [SpanType.STEP]: {
+    label: 'step',
+    icon: ChevronRight,
+    chip: 'bg-secondary text-secondary-foreground',
+    spine: 'bg-border',
+  },
 };
 
 export function AgentCard({ data }: NodeProps) {
@@ -41,6 +68,8 @@ export function AgentCard({ data }: NodeProps) {
   const status = cardStatus(node);
   const duration = formatDuration(node.duration_ms);
   const eventCount = node.events.length;
+  const type = TYPE_STYLE[node.span_type] ?? TYPE_STYLE[SpanType.STEP];
+  const TypeIcon = type.icon;
 
   return (
     <div
@@ -55,7 +84,8 @@ export function AgentCard({ data }: NodeProps) {
       }}
       style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}
       className={cn(
-        'group flex cursor-pointer flex-col justify-between rounded-lg border bg-card p-3 text-left',
+        'group relative flex cursor-pointer flex-col justify-between overflow-hidden',
+        'rounded-lg border bg-card py-2.5 pl-4 pr-3 text-left',
         'shadow-sm transition-[box-shadow,border-color,transform] duration-200',
         'hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         STATUS_RING[status],
@@ -63,7 +93,10 @@ export function AgentCard({ data }: NodeProps) {
         isNew && 'agenttrace-spawn'
       )}
     >
-      <Handle type="target" position={Position.Left} className="!opacity-0" />
+      {/* Flow is top-down, so edges enter the top and leave the bottom. */}
+      <Handle type="target" position={Position.Top} className="!opacity-0" />
+
+      <span aria-hidden className={cn('absolute inset-y-0 left-0 w-1', type.spine)} />
 
       <div className="flex items-start gap-2">
         <span
@@ -81,11 +114,13 @@ export function AgentCard({ data }: NodeProps) {
       <div className="flex items-center justify-between gap-2">
         <span
           className={cn(
-            'rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide',
-            TYPE_CHIP[node.span_type] ?? TYPE_CHIP[SpanType.STEP]
+            'inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono',
+            'text-[10px] uppercase tracking-wide',
+            type.chip
           )}
         >
-          {node.span_type}
+          <TypeIcon aria-hidden className="h-3 w-3" strokeWidth={2.5} />
+          {type.label}
         </span>
         <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
           {duration ?? (status === 'running' ? 'running…' : '—')}
@@ -93,7 +128,7 @@ export function AgentCard({ data }: NodeProps) {
         </span>
       </div>
 
-      <Handle type="source" position={Position.Right} className="!opacity-0" />
+      <Handle type="source" position={Position.Bottom} className="!opacity-0" />
     </div>
   );
 }
