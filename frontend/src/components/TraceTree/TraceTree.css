@@ -6,13 +6,14 @@
 
 .trace-tree-header {
   padding: 12px 16px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid oklch(var(--border));
 }
 
 .trace-tree-header h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
+  color: oklch(var(--foreground));
 }
 
 .trace-tree-content {
@@ -31,11 +32,12 @@
 }
 
 .trace-node-header:hover {
-  background: #f5f5f5;
+  background: oklch(var(--muted));
 }
 
 .trace-node-header.selected {
-  background: #e3f2fd;
+  background: oklch(var(--accent));
+  box-shadow: inset 2px 0 0 oklch(var(--primary));
 }
 
 .expand-btn {
@@ -47,7 +49,7 @@
   border: none;
   cursor: pointer;
   font-size: 10px;
-  color: #666;
+  color: oklch(var(--muted-foreground));
 }
 
 .node-type-badge {
@@ -61,35 +63,37 @@
 }
 
 .type-agent_run {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: oklch(var(--brand-bg));
+  color: oklch(var(--brand-fg));
 }
 
 .type-step {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: oklch(var(--info-bg));
+  color: oklch(var(--info-fg));
 }
 
 .type-tool_call {
-  background: #fff3e0;
-  color: #e65100;
+  background: oklch(var(--warning-bg));
+  color: oklch(var(--warning-fg));
 }
 
 .type-llm_call {
-  background: #f3e5f5;
-  color: #7b1fa2;
+  background: oklch(var(--llm-bg));
+  color: oklch(var(--llm-fg));
 }
 
 .node-name {
   flex: 1;
   font-size: 13px;
   font-weight: 500;
+  color: oklch(var(--foreground));
 }
 
 .node-duration {
   font-size: 12px;
-  color: #666;
+  color: oklch(var(--muted-foreground));
   margin-left: 8px;
+  font-variant-numeric: tabular-nums;
 }
 
 .trace-tree-empty,
@@ -97,5 +101,5 @@
 .trace-tree-error {
   padding: 24px;
   text-align: center;
-  color: #666;
+  color: oklch(var(--muted-foreground));
 }

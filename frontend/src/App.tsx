@@ -14,7 +14,7 @@ function App() {
       <header className="app-header">
         <h1>Agent Trace</h1>
         <span className="version">v0.1.0</span>
-        <Button size="sm">shadcn/ui ready</Button>
+        <Button size="sm" variant="secondary">shadcn/ui ready</Button>
       </header>
 
       <main className="app-main">

@@ -27,7 +27,7 @@ async def run_primo_cleanup_pipeline(csv_path: str) -> list[PipelineOutcome]:
         # AgentTraceCallbackHandler's fallback (see utils/tracing.py) resolve
         # each record's graph run as a child of this root instead of an
         # orphaned top-level span.
-        with Tracer(name="primo_kogen_pipeline", endpoint=ingest_endpoint()) as root_span:
+        with Tracer(name="primo_pipeline", endpoint=ingest_endpoint()) as root_span:
             set_current_span(root_span)
             try:
                 result = await run_pipeline(csv_path)

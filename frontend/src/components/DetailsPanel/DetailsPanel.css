@@ -1,13 +1,13 @@
 .details-panel {
   height: 100%;
   overflow: auto;
-  background: #fff;
+  background: oklch(var(--card));
 }
 
 .details-panel-empty {
   padding: 24px;
   text-align: center;
-  color: #666;
+  color: oklch(var(--muted-foreground));
 }
 
 .details-header {
@@ -15,13 +15,14 @@
   align-items: center;
   gap: 12px;
   padding: 16px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid oklch(var(--border));
 }
 
 .details-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
+  color: oklch(var(--foreground));
 }
 
 .type-badge {
@@ -34,36 +35,37 @@
 }
 
 .type-agent_run {
-  background: #e8f5e9;
-  color: #2e7d32;
+  background: oklch(var(--brand-bg));
+  color: oklch(var(--brand-fg));
 }
 
 .type-step {
-  background: #e3f2fd;
-  color: #1565c0;
+  background: oklch(var(--info-bg));
+  color: oklch(var(--info-fg));
 }
 
 .type-tool_call {
-  background: #fff3e0;
-  color: #e65100;
+  background: oklch(var(--warning-bg));
+  color: oklch(var(--warning-fg));
 }
 
 .type-llm_call {
-  background: #f3e5f5;
-  color: #7b1fa2;
+  background: oklch(var(--llm-bg));
+  color: oklch(var(--llm-fg));
 }
 
 .details-section {
   padding: 16px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid oklch(var(--border));
 }
 
 .details-section h4 {
   margin: 0 0 12px 0;
   font-size: 13px;
   font-weight: 600;
-  color: #666;
+  color: oklch(var(--muted-foreground));
   text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .details-grid {
@@ -78,13 +80,14 @@
 }
 
 .detail-row .label {
-  color: #666;
+  color: oklch(var(--muted-foreground));
   font-size: 13px;
 }
 
 .detail-row .value {
   font-size: 13px;
   font-weight: 500;
+  color: oklch(var(--foreground));
 }
 
 .events-list {
@@ -94,9 +97,10 @@
 }
 
 .event-item {
-  background: #f8f9fa;
+  background: oklch(var(--muted));
   border-radius: 4px;
   padding: 12px;
+  border-left: 2px solid oklch(var(--border));
 }
 
 .event-header {
@@ -108,11 +112,13 @@
 .event-type {
   font-weight: 500;
   font-size: 13px;
+  color: oklch(var(--foreground));
 }
 
 .event-time {
-  color: #666;
+  color: oklch(var(--muted-foreground));
   font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .json-view {
@@ -122,7 +128,8 @@
 .json-content {
   margin: 0;
   padding: 8px;
-  background: #f0f0f0;
+  background: oklch(var(--secondary));
+  color: oklch(var(--secondary-foreground));
   border-radius: 4px;
   font-size: 12px;
   overflow-x: auto;
