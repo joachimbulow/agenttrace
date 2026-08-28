@@ -92,7 +92,7 @@ mean nothing to the database.
 
 ## Bus
 
-The in-process fan-out between ingest and connected browsers: a dict of `run_id → rev` plus a
-swappable `asyncio.Event` per run. Not a queue — it holds no events, only the fact that
-something changed. Single-process only; running the backend with multiple workers would break
-it (ingest lands on one worker, the stream on another).
+The in-process fan-out between ingest and connected browsers: a pyee `EventEmitter` plus a
+dict of `run_id → rev`. Not a queue — it holds no events, only the fact that something
+changed. Single-process only; running the backend with multiple workers would break it
+(ingest lands on one worker, the stream on another).

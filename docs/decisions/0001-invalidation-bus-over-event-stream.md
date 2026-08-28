@@ -32,20 +32,22 @@ All of that is machinery for keeping two copies of the truth in agreement.
 The server's stored tree is the only representation of the truth; the client never
 reconstructs it.
 
-The bus is not a queue. It is a per-run revision counter plus a swappable `asyncio.Event`:
+The bus is not a queue. Fan-out is a pyee `EventEmitter`; the only extra
+state is a per-run revision counter. Waiters re-read `rev` rather than
+draining events, which is what makes coalescing free:
 
 ```python
 def publish(self, run_id):
     self._revs[run_id] = self._revs.get(run_id, 0) + 1
-    ev = self._events.pop(run_id, None)
-    if ev: ev.set()
+    self._ee.emit(run_id)
 
 async def wait(self, run_id, since_rev):
-    while True:
-        rev = self._revs.get(run_id, 0)
-        if rev > since_rev:
-            return rev
-        await self._events.setdefault(run_id, asyncio.Event()).wait()
+    if (rev := self._revs.get(run_id, 0)) > since_rev:
+        return rev
+    woke = asyncio.Event()
+    self._ee.on(run_id, woke.set)
+    await woke.wait()
+    return self._revs[run_id]
 ```
 
 ## Consequences
@@ -81,3 +83,7 @@ rather than a rewrite of this one.
   localhost.
 - **Polling `/tree` every 300ms** (the earlier plan's fallback) — same refetch cost, but
   constant regardless of activity, and visibly laggy at the moment a card should appear.
+- **A queue-based in-memory bus** (e.g. encode/broadcaster) — reintroduces per-subscriber
+  queues and a drop/backpressure policy, which is exactly the machinery this decision
+  deletes. pyee emits to current listeners only; missed publishes are observed as a
+  larger jump in `rev`.

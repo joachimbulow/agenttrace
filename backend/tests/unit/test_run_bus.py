@@ -140,6 +140,22 @@ class TestWait:
 
         assert await asyncio.wait_for(bus.wait("run-1", since_rev=1), timeout=1) == 2
 
+    @pytest.mark.asyncio
+    async def test_cancelled_wait_does_not_block_later_wait(self) -> None:
+        """A timed-out or disconnected waiter must drop its listener."""
+        bus = InMemoryRunEventBus()
+        waiter = asyncio.create_task(bus.wait("run-1", since_rev=0))
+        await asyncio.sleep(0)
+        waiter.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await waiter
+
+        later = asyncio.create_task(bus.wait("run-1", since_rev=0))
+        await asyncio.sleep(0)
+        await bus.publish("run-1")
+
+        assert await asyncio.wait_for(later, timeout=1) == 1
+
 
 async def _publish_soon(bus: InMemoryRunEventBus, run_id: str) -> None:
     await asyncio.sleep(0)

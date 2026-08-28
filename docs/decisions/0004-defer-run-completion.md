@@ -38,9 +38,9 @@ a record's subtree. Nothing about the live canvas depends on knowing that the *r
   emitting keepalive pings.
 - **Streams never self-terminate.** A departed client is the only cleanup trigger, so the SSE
   route must check `request.is_disconnected()` each iteration or waiters accumulate.
-- **The bus leaks slowly** — one `rev` entry and possibly one `asyncio.Event` per run id, never
-  reclaimed. Bounded by the number of distinct runs since process start. Irrelevant for local
-  use; would need eviction before this ran anywhere long-lived.
+- **The bus leaks slowly** — one `rev` entry per run id, never reclaimed. Bounded by the
+  number of distinct runs since process start. Irrelevant for local use; would need eviction
+  before this ran anywhere long-lived.
 - **A killed workflow is indistinguishable from a slow one.** The UI will keep saying `live`
   after you Ctrl-C the CLI. Acceptable for a demo where the operator is the one pressing Ctrl-C.
 - **The run list cannot be filtered or sorted by status** in any useful way, and

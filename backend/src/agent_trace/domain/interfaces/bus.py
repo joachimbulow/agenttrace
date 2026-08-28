@@ -23,10 +23,10 @@ class IRunEventBus(ABC):
         a waiter that wakes early will refetch stale data and then never be
         told again.
 
-        Async even though the work is trivial: it touches ``asyncio.Event``,
-        which is not thread-safe. Starlette runs a *sync* background task in
-        a threadpool, so a sync ``publish`` would set those events off the
-        event loop thread and could silently fail to wake waiters.
+        Async even though the work is trivial: the implementation wakes
+        waiters via asyncio primitives, which are not thread-safe.
+        Starlette runs a *sync* background task in a threadpool, so a
+        sync ``publish`` could silently fail to wake waiters.
 
         Args:
             run_id: The run whose stored data just changed.
