@@ -6,7 +6,7 @@ than a hardcoded single literal, per docs/workflow_design.md section 1.
 
 Implemented as a plain LCEL `Runnable` (no parallel composition needed).
 `gate_node` is what the orchestrator wires; `reject_node` is the unknown-task
-early exit from this same stage. See utils/tracing.py for how node spans
+early exit from this same stage. See agent_trace_sdk.langchain.AgentTraceCallbackHandler for how node spans
 are produced.
 """
 

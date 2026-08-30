@@ -20,7 +20,7 @@ mismatch / gap is decided here from the enrichment data, not inherited
 from it. The three paths are composed via LCEL `RunnableParallel`, which
 runs them concurrently and gives each its own trace span nested under
 `diagnose` (see agents/enrich/agent.py for the same pattern, and
-utils/tracing.py for how nested spans are detected).
+agent_trace_sdk.langchain for how nested spans are detected).
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ from agent_workflows.models.schemas import (
     RawRecord,
 )
 from agent_workflows.pipeline.state import PipelineState
-from agent_workflows.utils.tracing import leaf
+from agent_trace_sdk.langchain import leaf
 
 # Placeholder "business rule": a plausible Danish-style plate format.
 # Stands in for a real segmentation/locking rule check (see module docstring).

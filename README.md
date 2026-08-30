@@ -300,7 +300,7 @@ npm run dev
 These are ideas for future development — **not currently implemented**:
 
 - **Framework integrations**
-  - LangChain callback handler for automatic tracing
+  - [x] LangChain / LangGraph callback (`agent_trace_sdk.langchain`)
   - LlamaIndex integration
   - OpenAI SDK wrapper
 

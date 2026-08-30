@@ -3,6 +3,9 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+from agent_trace_sdk import Tracer
+from agent_trace_sdk.domain.interfaces import ExportBatch, IEventExporter
+
 from agent_workflows.agents.gate.agent import KNOWN_TASK_TYPES, gate_chain
 from agent_workflows.models.schemas import RawRecord
 from agent_workflows.pipeline.orchestrator import run_pipeline
@@ -36,8 +39,24 @@ def test_load_records_is_schema_tolerant() -> None:
     assert len(set(ids)) == len(ids)
 
 
+class _NoopExporter(IEventExporter):
+    async def export(self, batch: ExportBatch) -> bool:
+        return True
+
+    async def flush(self) -> None:
+        pass
+
+    async def close(self) -> None:
+        pass
+
+
 def test_pipeline_runs_end_to_end_over_sample_fixture() -> None:
-    outcomes = asyncio.run(run_pipeline(str(SAMPLE_CSV)))
+    async def _run() -> list:
+        tracer = Tracer(name="test_pipeline", exporter=_NoopExporter())
+        async with tracer:
+            return await run_pipeline(str(SAMPLE_CSV), tracer=tracer)
+
+    outcomes = asyncio.run(_run())
 
     assert len(outcomes) == 7
 

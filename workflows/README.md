@@ -3,7 +3,7 @@
 PoC package for agent graphs. The orchestrator is a real LangGraph
 `StateGraph`; each agent is an LCEL `Runnable`, and node-level tracing runs
 through a LangChain callback handler (see `pipeline/orchestrator.py` and
-`utils/tracing.py`).
+`agent_trace_sdk.langchain`).
 
 The implemented flow is a **Primo insurance data cleanup** scaffold:
 a 6-node pipeline (gate -> enrich -> diagnose -> judge -> determine result
@@ -37,7 +37,7 @@ src/agent_workflows/
     db2_service.py        Primo DB2 read access (# MOCK)
     staging_service.py    staging + HITL queue writes (# MOCK)
     csv_loader.py          real (not mocked) local CSV read
-  utils/       tracing config, helpers
+  utils/       ingest endpoint config
   workflows/   compose the pipeline into one traced run (primo.py)
 data/
   sample_extract.csv     tiny synthetic fixture for local runs

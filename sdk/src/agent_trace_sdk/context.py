@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextvars import ContextVar, Token
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .span import Span
@@ -18,6 +18,13 @@ def get_current_span() -> Span | None:
         Current span or None if no span is active.
     """
     return _current_span.get()
+
+
+def add_event(event_type: str, payload: dict[str, Any] | None = None) -> None:
+    """Add an event to the current span, or no-op if none is active."""
+    span = get_current_span()
+    if span is not None:
+        span.add_event(event_type, payload)
 
 
 def set_current_span(span: Span | None) -> Token[Span | None]:

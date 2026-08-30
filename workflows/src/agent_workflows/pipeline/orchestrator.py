@@ -3,7 +3,8 @@ from __future__ import annotations
 import asyncio
 from dataclasses import replace
 
-from agent_trace_sdk import get_current_run_id
+from agent_trace_sdk import Tracer, get_current_run_id
+from agent_trace_sdk.langchain import AgentTraceCallbackHandler
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
@@ -17,7 +18,6 @@ from agent_workflows.agents.save_result.agent import save_result_node
 from agent_workflows.models.schemas import PipelineOutcome, RawRecord
 from agent_workflows.pipeline.state import PipelineState
 from agent_workflows.services.csv_loader import load_records
-from agent_workflows.utils.tracing import agent_trace_callback_handler
 
 
 def _route_known(state: PipelineState) -> str:
@@ -61,12 +61,15 @@ def _build_graph() -> CompiledStateGraph[PipelineState]:
 _GRAPH = _build_graph()
 
 
-async def _run_record(record: RawRecord) -> PipelineOutcome:
+async def _run_record(
+    record: RawRecord,
+    handler: AgentTraceCallbackHandler,
+) -> PipelineOutcome:
     """Run one record through the graph."""
     final_state = await _GRAPH.ainvoke(
         {"record": record},
         config={
-            "callbacks": [agent_trace_callback_handler],
+            "callbacks": [handler],
             "run_name": f"primo_record[{record.record_id}]",
             "metadata": {
                 "record_id": record.record_id,
@@ -78,7 +81,7 @@ async def _run_record(record: RawRecord) -> PipelineOutcome:
     return replace(outcome, run_id=get_current_run_id())
 
 
-async def run_pipeline(csv_path: str) -> list[PipelineOutcome]:
+async def run_pipeline(csv_path: str, *, tracer: Tracer) -> list[PipelineOutcome]:
     """Load `csv_path` and run every record through the pipeline.
 
     Records are processed concurrently (each gets its own graph run); this
@@ -86,5 +89,8 @@ async def run_pipeline(csv_path: str) -> list[PipelineOutcome]:
     record's spans nest under its own `primo_record[<record_id>]`
     span rather than being interleaved flat under the pipeline root.
     """
+    handler = AgentTraceCallbackHandler(
+        tracer, attribute_keys=("record_id", "policy_id")
+    )
     records = load_records(csv_path)
-    return await asyncio.gather(*(_run_record(record) for record in records))
+    return await asyncio.gather(*(_run_record(record, handler) for record in records))

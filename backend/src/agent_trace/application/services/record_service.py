@@ -30,10 +30,9 @@ if TYPE_CHECKING:
         ITraceNodeRepository,
     )
 
-# Attribute stamped by the workflow's LangChain callback bridge
-# (workflows/src/agent_workflows/utils/tracing.py) onto exactly the spans
-# that represent one record's own graph invocation. Its presence is what
-# makes a span a record root.
+# Attribute stamped by AgentTraceCallbackHandler (attribute_keys)
+# onto exactly the spans that represent one record's own graph invocation.
+# Its presence is what makes a span a record root.
 RECORD_MARKER_ATTRIBUTE = "record_id"
 
 ERROR_EVENT_TYPE = "error"

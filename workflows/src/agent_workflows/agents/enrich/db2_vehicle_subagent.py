@@ -15,7 +15,7 @@ from langchain_core.runnables import Runnable, RunnableLambda
 
 from agent_workflows.models.schemas import EnrichmentFinding, GateResult
 from agent_workflows.services import db2_service
-from agent_workflows.utils.tracing import leaf
+from agent_trace_sdk.langchain import leaf
 
 
 async def _db2_lookup(gate: GateResult) -> EnrichmentFinding:

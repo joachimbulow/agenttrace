@@ -1,4 +1,4 @@
-"""Verifies the LangChain callback bridge (utils/tracing.py) actually
+"""Verifies the LangChain callback bridge (agent_trace_sdk.langchain)
 produces a correctly-nested trace tree when the pipeline runs -- this is
 the behavior pipeline/orchestrator.py's refactor to a LangGraph
 `StateGraph` exists to enable, so it's worth testing directly rather than
@@ -43,8 +43,9 @@ def _run_traced(
 ) -> tuple[list[PipelineOutcome], list[ExportEvent], Span]:
     async def _run():
         exporter = _CapturingExporter()
-        async with Tracer(name="test_run", exporter=exporter) as root_span:
-            outcomes = await run_pipeline(csv_path)
+        tracer = Tracer(name="test_run", exporter=exporter)
+        async with tracer as root_span:
+            outcomes = await run_pipeline(csv_path, tracer=tracer)
         return outcomes, exporter, root_span
 
     outcomes, exporter, root_span = asyncio.run(_run())
