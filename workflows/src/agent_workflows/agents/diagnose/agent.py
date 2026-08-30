@@ -29,6 +29,8 @@ import asyncio
 import re
 from typing import Literal
 
+from agent_trace_sdk import add_event
+from agent_trace_sdk.langchain import leaf
 from langchain_core.runnables import (
     Runnable,
     RunnableConfig,
@@ -45,12 +47,19 @@ from agent_workflows.models.schemas import (
     RawRecord,
 )
 from agent_workflows.pipeline.state import PipelineState
-from agent_trace_sdk.langchain import leaf
 
 # Placeholder "business rule": a plausible Danish-style plate format.
 # Stands in for a real segmentation/locking rule check (see module docstring).
 _PLATE_PATTERN = re.compile(r"^[A-Z]{2}\d{5}$")
 _COMPARE_FIELDS = ("plate_number", "owner_name", "vehicle_make", "vehicle_model")
+
+
+def _emit_proposal(proposal: DiagnosisProposal) -> DiagnosisProposal:
+    add_event(
+        "result",
+        {"path": proposal.path, "status": proposal.status, "confidence": proposal.confidence},
+    )
+    return proposal
 
 
 def _diagnose_against_source(
@@ -60,12 +69,14 @@ def _diagnose_against_source(
     source_label: str,
 ) -> DiagnosisProposal:
     if not finding.data:
-        return DiagnosisProposal(
-            path=path,
-            status="gap",
-            proposed_correction=None,
-            rationale=f"{path.upper()} path: {finding.details} -- cannot diagnose without reference data.",
-            confidence=0.35,
+        return _emit_proposal(
+            DiagnosisProposal(
+                path=path,
+                status="gap",
+                proposed_correction=None,
+                rationale=f"{path.upper()} path: {finding.details} -- cannot diagnose without reference data.",
+                confidence=0.35,
+            )
         )
 
     mismatched = [
@@ -74,21 +85,25 @@ def _diagnose_against_source(
         if record.raw.get(field) != finding.data.get(field)
     ]
     if not mismatched:
-        return DiagnosisProposal(
-            path=path,
-            status="match",
-            proposed_correction=None,
-            rationale=f"{path.upper()} path: record matches {source_label} on all compared fields.",
-            confidence=0.95,
+        return _emit_proposal(
+            DiagnosisProposal(
+                path=path,
+                status="match",
+                proposed_correction=None,
+                rationale=f"{path.upper()} path: record matches {source_label} on all compared fields.",
+                confidence=0.95,
+            )
         )
 
     fields = ", ".join(mismatched)
-    return DiagnosisProposal(
-        path=path,
-        status="mismatch",
-        proposed_correction=f"Align record with {source_label} ({fields}).",
-        rationale=f"{path.upper()} path: mismatch on {fields}.",
-        confidence=0.85,
+    return _emit_proposal(
+        DiagnosisProposal(
+            path=path,
+            status="mismatch",
+            proposed_correction=f"Align record with {source_label} ({fields}).",
+            rationale=f"{path.upper()} path: mismatch on {fields}.",
+            confidence=0.85,
+        )
     )
 
 
@@ -108,27 +123,36 @@ def _diagnose_from_rules(enrichment: EnrichmentResult) -> DiagnosisProposal:
     record = enrichment.gate.record
     plate = record.raw.get("plate_number", "")
     if _PLATE_PATTERN.match(plate):
-        return DiagnosisProposal(
-            path="rules",
-            status="match",
-            proposed_correction=None,
-            rationale=f"Rules path: plate '{plate}' passes format check; no anomaly detected.",
-            confidence=0.7,
+        return _emit_proposal(
+            DiagnosisProposal(
+                path="rules",
+                status="match",
+                proposed_correction=None,
+                rationale=f"Rules path: plate '{plate}' passes format check; no anomaly detected.",
+                confidence=0.7,
+            )
         )
-    return DiagnosisProposal(
-        path="rules",
-        status="mismatch",
-        proposed_correction="Flag for manual plate-format review.",
-        rationale=f"Rules path: plate '{plate}' fails expected format check.",
-        confidence=0.6,
+    return _emit_proposal(
+        DiagnosisProposal(
+            path="rules",
+            status="mismatch",
+            proposed_correction="Flag for manual plate-format review.",
+            rationale=f"Rules path: plate '{plate}' fails expected format check.",
+            confidence=0.6,
+        )
     )
 
 
 def _merge(parts: dict) -> DiagnosisResult:
-    return DiagnosisResult(
+    result = DiagnosisResult(
         enrichment=parts["enrichment"],
         proposals=(parts["dmr"], parts["db2"], parts["rules"]),
     )
+    add_event(
+        "result",
+        {proposal.path: proposal.status for proposal in result.proposals},
+    )
+    return result
 
 
 diagnose_chain: Runnable[EnrichmentResult, DiagnosisResult] = (

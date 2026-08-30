@@ -13,16 +13,19 @@ from __future__ import annotations
 
 import asyncio
 
+from agent_trace_sdk import add_event
+from agent_trace_sdk.langchain import leaf
 from langchain_core.runnables import Runnable, RunnableLambda
 
 from agent_workflows.models.schemas import EnrichmentFinding, GateResult
 from agent_workflows.services import db2_service
-from agent_trace_sdk.langchain import leaf
 
 
 async def _db2_lookup(gate: GateResult) -> EnrichmentFinding:
     await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
-    return db2_service.lookup(gate.record)
+    finding = db2_service.lookup(gate.record)
+    add_event("result", {"source": "db2", "found": bool(finding.data)})
+    return finding
 
 
 db2_chain: Runnable[GateResult, EnrichmentFinding] = leaf(

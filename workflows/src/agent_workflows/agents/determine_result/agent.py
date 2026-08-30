@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 
+from agent_trace_sdk import add_event
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import JudgeVerdict, ResultDecision
@@ -24,6 +25,7 @@ CONFIDENCE_THRESHOLD = 0.75
 
 def _determine_result(verdict: JudgeVerdict) -> ResultDecision:
     branch = "correct_validate" if verdict.confidence >= CONFIDENCE_THRESHOLD else "save_result"
+    add_event("result", {"branch": branch, "confidence": verdict.confidence})
     return ResultDecision(verdict=verdict, branch=branch, threshold=CONFIDENCE_THRESHOLD)
 
 

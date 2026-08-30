@@ -91,7 +91,7 @@ class Span:
         """Add an event to the span.
 
         Args:
-            event_type: Type of event (input, output, error).
+            event_type: Type of event (result, input, output, error).
             payload: Event payload.
         """
         if self.tracer:

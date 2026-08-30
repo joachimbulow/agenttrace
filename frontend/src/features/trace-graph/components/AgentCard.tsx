@@ -6,7 +6,7 @@ import { Bot, ChevronRight, Sparkles, Wrench, type LucideIcon } from 'lucide-rea
 import { SpanType, type TraceNode } from '@/features/trace-graph/types/trace';
 import { cardStatus, formatDuration, type CardStatus } from '@/features/trace-graph/lib/status';
 import { CARD_HEIGHT, CARD_WIDTH } from '@/features/trace-graph/lib/layout';
-import { displayPayload, pickHighlights } from '@/features/trace-graph/lib/payload';
+import { displayPayload, pickHighlights, resultPayload } from '@/features/trace-graph/lib/payload';
 import { PayloadHighlights } from '@/features/trace-graph/components/PayloadHighlights';
 import { PayloadOverlay } from '@/features/trace-graph/components/PayloadOverlay';
 import { cn } from '@/shared/lib/utils';
@@ -70,8 +70,9 @@ export function AgentCard({ data }: NodeProps) {
   const { node, isNew, selected, onSelect } = data as AgentCardData;
   const status = cardStatus(node);
   const duration = formatDuration(node.duration_ms);
-  const payload = displayPayload(node.events);
-  const highlights = payload ? pickHighlights(payload.value) : [];
+  const result = resultPayload(node.events);
+  const highlights = result ? pickHighlights(result.value) : [];
+  const debug = displayPayload(node.events);
   const type = TYPE_STYLE[node.span_type] ?? TYPE_STYLE[SpanType.STEP];
   const TypeIcon = type.icon;
 
@@ -132,7 +133,7 @@ export function AgentCard({ data }: NodeProps) {
 
       {/* Flow is top-down, so edges enter the top and leave the bottom. */}
       <Handle type="target" position={Position.Top} className="!opacity-0" />
-      {selected && payload && <PayloadOverlay value={payload.value} />}
+      {selected && debug && <PayloadOverlay value={debug.value} kind={debug.kind} />}
       <Handle type="source" position={Position.Bottom} className="!opacity-0" />
     </div>
   );

@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import asyncio
 
+from agent_trace_sdk import add_event
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import DiagnosisResult, JudgeVerdict
@@ -49,6 +50,7 @@ def _judge(diagnosis: DiagnosisResult) -> JudgeVerdict:
 
     selected = max(proposals, key=lambda p: p.confidence, default=None)
     if selected is None:
+        add_event("result", {"conflict": True, "confidence": 0.0, "selected": None})
         return JudgeVerdict(
             diagnosis=diagnosis,
             selected_proposal=None,
@@ -72,6 +74,10 @@ def _judge(diagnosis: DiagnosisResult) -> JudgeVerdict:
             f"'{selected.path}' with confidence {confidence:.2f}."
         )
 
+    add_event(
+        "result",
+        {"conflict": conflict, "confidence": confidence, "selected": selected.path},
+    )
     return JudgeVerdict(
         diagnosis=diagnosis,
         selected_proposal=selected,

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 
+from agent_trace_sdk import add_event
 from langchain_core.runnables import (
     Runnable,
     RunnableConfig,
@@ -26,7 +27,9 @@ from agent_workflows.pipeline.state import PipelineState
 
 
 def _merge(parts: dict) -> EnrichmentResult:
-    return EnrichmentResult(gate=parts["gate"], dmr=parts["dmr"], db2=parts["db2"])
+    result = EnrichmentResult(gate=parts["gate"], dmr=parts["dmr"], db2=parts["db2"])
+    add_event("result", {"dmr": bool(result.dmr.data), "db2": bool(result.db2.data)})
+    return result
 
 
 enrich_chain: Runnable[GateResult, EnrichmentResult] = (

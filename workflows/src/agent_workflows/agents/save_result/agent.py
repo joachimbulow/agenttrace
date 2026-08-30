@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 
+from agent_trace_sdk import add_event
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import PipelineOutcome, ResultDecision
@@ -38,6 +39,7 @@ def _save_result(decision: ResultDecision) -> PipelineOutcome:
         },
     )
 
+    add_event("result", {"branch": "save_result", "confidence": verdict.confidence})
     return PipelineOutcome(
         policy_id=record.policy_id,
         task_type=record.task_type,

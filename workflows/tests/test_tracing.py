@@ -137,11 +137,47 @@ def test_judge_span_type_is_llm_call_others_are_step() -> None:
     assert gate_types == {"step"}
 
 
-def test_spans_carry_input_and_output_events() -> None:
+_RESULT_KEYS: dict[str, set[str]] = {
+    "gate": {"known", "task_type"},
+    "reject": {"known", "task_type"},
+    "enrich": {"dmr", "db2"},
+    "dmr_subagent": {"source", "found"},
+    "db2_vehicle_subagent": {"source", "found"},
+    "diagnose": {"dmr", "db2", "rules"},
+    "diagnose_dmr_path": {"path", "status", "confidence"},
+    "diagnose_db2_path": {"path", "status", "confidence"},
+    "diagnose_rules_path": {"path", "status", "confidence"},
+    "judge": {"conflict", "confidence", "selected"},
+    "determine_result": {"branch", "confidence"},
+    "correct_validate": {"branch", "confidence"},
+    "save_result": {"branch", "confidence"},
+}
+
+
+def test_spans_carry_input_output_and_result_events() -> None:
     _, events, _ = _run_traced(str(SAMPLE_CSV))
     starts = {e.span_id: e.data for e in events if e.event_type == "span_start"}
     gate_span_ids = {sid for sid, d in starts.items() if d["name"] == "gate"}
 
     span_events = [e for e in events if e.event_type == "span_event" and e.span_id in gate_span_ids]
     event_types = {e.data["event_type"] for e in span_events}
-    assert {"input", "output"}.issubset(event_types)
+    assert {"input", "output", "result"}.issubset(event_types)
+
+    results_by_span: dict[str, list[dict]] = {}
+    for event in events:
+        if event.event_type != "span_event" or event.data.get("event_type") != "result":
+            continue
+        results_by_span.setdefault(event.span_id, []).append(event.data["payload"])
+
+    seen: set[str] = set()
+    for span_id, start in starts.items():
+        name = start["name"]
+        expected = _RESULT_KEYS.get(name)
+        if expected is None:
+            continue
+        seen.add(name)
+        payloads = results_by_span.get(span_id, [])
+        assert payloads, f"{name} span {span_id} has no result event"
+        assert expected.issubset(payloads[-1].keys()), (name, payloads[-1])
+
+    assert seen == set(_RESULT_KEYS)

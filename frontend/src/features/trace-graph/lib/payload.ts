@@ -3,13 +3,18 @@
 import type { SpanEvent } from '@/features/trace-graph/types/trace';
 
 export const PREFERRED_KEYS = [
-  'status',
-  'confidence',
-  'rationale',
-  'conflict',
-  'reason',
-  'branch',
   'known',
+  'status',
+  'found',
+  'branch',
+  'conflict',
+  'confidence',
+  'selected',
+  'task_type',
+  'path',
+  'source',
+  'reason',
+  'rationale',
 ] as const;
 
 const MAX_HIGHLIGHTS = 3;
@@ -26,6 +31,11 @@ export interface Highlight {
 }
 
 export interface DisplayPayload {
+  kind: 'result' | 'output' | 'error';
+  value: unknown;
+}
+
+export interface DebugPayload {
   kind: 'output' | 'error';
   value: unknown;
 }
@@ -43,11 +53,19 @@ export function isScalar(value: unknown): value is string | number | boolean | n
   );
 }
 
-export function displayPayload(events: SpanEvent[]): DisplayPayload | null {
+/** Card overview — the agent's own result, never input/output. */
+export function resultPayload(events: SpanEvent[]): DisplayPayload | null {
+  const result = lastOfType(events, 'result');
+  if (result) return { kind: 'result' as const, value: unwrapPayload(result.payload) };
+  return null;
+}
+
+/** Overlay / debug — full output, or error if the span failed. */
+export function displayPayload(events: SpanEvent[]): DebugPayload | null {
   const error = lastOfType(events, 'error');
-  if (error) return { kind: 'error', value: unwrapPayload(error.payload) };
+  if (error) return { kind: 'error' as const, value: unwrapPayload(error.payload) };
   const output = lastOfType(events, 'output');
-  if (output) return { kind: 'output', value: unwrapPayload(output.payload) };
+  if (output) return { kind: 'output' as const, value: unwrapPayload(output.payload) };
   return null;
 }
 

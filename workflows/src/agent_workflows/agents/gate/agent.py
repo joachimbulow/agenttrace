@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 
+from agent_trace_sdk import add_event
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import GateResult, PipelineOutcome, RawRecord
@@ -25,7 +26,9 @@ KNOWN_TASK_TYPES: frozenset[str] = frozenset({"12_11"})
 
 
 def _gate(record: RawRecord) -> GateResult:
-    if record.task_type in KNOWN_TASK_TYPES:
+    known = record.task_type in KNOWN_TASK_TYPES
+    add_event("result", {"known": known, "task_type": record.task_type})
+    if known:
         return GateResult(
             record=record, known=True, reason=f"task_type '{record.task_type}' recognized."
         )
@@ -49,6 +52,7 @@ async def reject_node(state: PipelineState) -> dict:
     await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.gate is not None
     gate = state.gate
+    add_event("result", {"known": False, "task_type": gate.record.task_type})
     return {
         "outcome": PipelineOutcome(
             policy_id=gate.record.policy_id,
