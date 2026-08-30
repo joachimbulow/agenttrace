@@ -1,0 +1,11 @@
+version: "3"
+
+vars:
+  DB_GLOB: data/agent_trace.db*
+
+tasks:
+  db:reset:
+    desc: Delete the local SQLite database (recreated on next backend start)
+    cmds:
+      - rm -f {{.DB_GLOB}}
+      - echo "Database reset. It will be recreated on next backend start."

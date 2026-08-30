@@ -328,6 +328,6 @@ Lifecycle tests now cover:
 
 - **Event model and HTTP ingest.** Backend, UI, and workflow tests already depended on it.
 - **`Tracer._instance` singleton.** Fine for one CLI process. Wrong if two tracers overlap. Not urgent for this PoC.
-- **LangChain callback living in `workflows/`.** It is a thin bridge and already nests correctly once current span works. Moving it into the SDK is later.
+- **LangChain callback.** Now in `agent_trace_sdk.langchain`. How the handler, ContextVars, and `leaf()` fit together is in `explanations/tracing-now.md`.
 
 Switching to LangSmith or Langfuse would give a mature callback and a hosted UI. It would **not** feed AgentTrace. The local debugger is the product; the SDK exists to feed this stack.

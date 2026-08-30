@@ -84,11 +84,9 @@ this package's existing conventions:
    to which proposal gets *selected* but is not itself treated as a source
    of conflict, since it checks a different concern (format anomalies)
    than the two source-driven paths. See `agents/judge/agent.py`.
-5. The orchestrator processes every record in the CSV concurrently (one
-   `asyncio.gather` over all records, each running the full gate -> ... ->
-   branch chain), not sequentially -- this doesn't change the per-record
-   graph shape, but means the trace for a multi-record CSV shows several
-   parallel per-record subtrees under one root span.
+5. The orchestrator processes every record in the CSV sequentially (each
+   running the full gate -> ... -> branch chain). Each record's spans nest
+   under its own `primo_record[<record_id>]` span under one pipeline root.
 6. `pipeline/orchestrator.py` is a LangGraph `StateGraph` that only wires
    agent nodes; `PipelineState` lives in `pipeline/state.py` so nodes can
    import it without a cycle. `enrich` and `diagnose` are each a single
