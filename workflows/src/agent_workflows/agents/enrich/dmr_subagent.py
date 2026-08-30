@@ -11,6 +11,8 @@ calls a live DMR system in the PoC -- `services.dmr_service` is mocked.
 
 from __future__ import annotations
 
+import asyncio
+
 from langchain_core.runnables import Runnable, RunnableLambda
 
 from agent_workflows.models.schemas import EnrichmentFinding, GateResult
@@ -19,6 +21,7 @@ from agent_trace_sdk.langchain import leaf
 
 
 async def _dmr_lookup(gate: GateResult) -> EnrichmentFinding:
+    await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     return dmr_service.lookup(gate.record)
 
 

@@ -8,6 +8,8 @@ here -- this path is never skipped for low-confidence/conflicted cases.
 
 from __future__ import annotations
 
+import asyncio
+
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import PipelineOutcome, ResultDecision
@@ -53,6 +55,7 @@ save_result_chain: Runnable[ResultDecision, PipelineOutcome] = RunnableLambda(
 
 
 async def save_result_node(state: PipelineState, config: RunnableConfig) -> dict:
+    await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.decision is not None
     outcome = await save_result_chain.ainvoke(state.decision, config)
     return {"outcome": outcome}

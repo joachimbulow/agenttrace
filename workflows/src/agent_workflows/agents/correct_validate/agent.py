@@ -7,6 +7,8 @@ services/staging_service.py, marked `# MOCK` there.
 
 from __future__ import annotations
 
+import asyncio
+
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import PipelineOutcome, ResultDecision
@@ -48,6 +50,7 @@ correct_validate_chain: Runnable[ResultDecision, PipelineOutcome] = RunnableLamb
 
 
 async def correct_validate_node(state: PipelineState, config: RunnableConfig) -> dict:
+    await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.decision is not None
     outcome = await correct_validate_chain.ainvoke(state.decision, config)
     return {"outcome": outcome}

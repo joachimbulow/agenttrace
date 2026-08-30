@@ -25,6 +25,7 @@ agent_trace_sdk.langchain for how nested spans are detected).
 
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import Literal
 
@@ -142,6 +143,7 @@ diagnose_chain: Runnable[EnrichmentResult, DiagnosisResult] = (
 
 
 async def diagnose_node(state: PipelineState, config: RunnableConfig) -> dict:
+    await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.enrichment is not None
     diagnosis = await diagnose_chain.ainvoke(state.enrichment, config)
     return {"diagnosis": diagnosis}

@@ -89,8 +89,11 @@ async def run_pipeline(csv_path: str, *, tracer: Tracer) -> list[PipelineOutcome
     record's spans nest under its own `primo_record[<record_id>]`
     span rather than being interleaved flat under the pipeline root.
     """
-    handler = AgentTraceCallbackHandler(
-        tracer, attribute_keys=("record_id", "policy_id")
-    )
+    handler = AgentTraceCallbackHandler(tracer, attribute_keys=("record_id", "policy_id"))
     records = load_records(csv_path)
-    return await asyncio.gather(*(_run_record(record, handler) for record in records))
+    results = []
+    for record in records:
+        res = await asyncio.create_task(_run_record(record, handler))
+        results.append(res)
+        
+    return results

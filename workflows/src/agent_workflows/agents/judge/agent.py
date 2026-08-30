@@ -22,6 +22,8 @@ path is actually meant to check.
 
 from __future__ import annotations
 
+import asyncio
+
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import DiagnosisResult, JudgeVerdict
@@ -85,6 +87,7 @@ judge_chain: Runnable[DiagnosisResult, JudgeVerdict] = RunnableLambda(_judge).wi
 
 
 async def judge_node(state: PipelineState, config: RunnableConfig) -> dict:
+    await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.diagnosis is not None
     verdict = await judge_chain.ainvoke(state.diagnosis, config)
     return {"verdict": verdict}

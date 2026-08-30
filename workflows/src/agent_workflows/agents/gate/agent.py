@@ -12,6 +12,8 @@ are produced.
 
 from __future__ import annotations
 
+import asyncio
+
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import GateResult, PipelineOutcome, RawRecord
@@ -38,11 +40,13 @@ gate_chain: Runnable[RawRecord, GateResult] = RunnableLambda(_gate).with_config(
 
 
 async def gate_node(state: PipelineState, config: RunnableConfig) -> dict:
+    await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     gate = await gate_chain.ainvoke(state.record, config)
     return {"gate": gate}
 
 
-def reject_node(state: PipelineState) -> dict:
+async def reject_node(state: PipelineState) -> dict:
+    await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.gate is not None
     gate = state.gate
     return {

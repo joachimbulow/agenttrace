@@ -12,6 +12,8 @@ source team before relying on it for anything beyond this scaffold.
 
 from __future__ import annotations
 
+import asyncio
+
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import JudgeVerdict, ResultDecision
@@ -31,6 +33,7 @@ determine_result_chain: Runnable[JudgeVerdict, ResultDecision] = RunnableLambda(
 
 
 async def determine_result_node(state: PipelineState, config: RunnableConfig) -> dict:
+    await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.verdict is not None
     decision = await determine_result_chain.ainvoke(state.verdict, config)
     return {"decision": decision}

@@ -9,6 +9,8 @@ hand-written control flow) and merges their findings into an
 
 from __future__ import annotations
 
+import asyncio
+
 from langchain_core.runnables import (
     Runnable,
     RunnableConfig,
@@ -34,6 +36,7 @@ enrich_chain: Runnable[GateResult, EnrichmentResult] = (
 
 
 async def enrich_node(state: PipelineState, config: RunnableConfig) -> dict:
+    await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.gate is not None
     enrichment = await enrich_chain.ainvoke(state.gate, config)
     return {"enrichment": enrichment}
