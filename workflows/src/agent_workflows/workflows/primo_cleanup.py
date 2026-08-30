@@ -16,4 +16,4 @@ async def run_primo_cleanup_pipeline(csv_path: str) -> list[PipelineOutcome]:
     tracer = Tracer(name="primo_cleanup_pipeline", endpoint=ingest_endpoint())
     print(f"run_id={tracer.run_id}")
     async with tracer:
-        return await run_pipeline(csv_path, tracer=tracer)
+        return await run_pipeline(csv_path)

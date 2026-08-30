@@ -45,7 +45,7 @@ def _run_traced(
         exporter = _CapturingExporter()
         tracer = Tracer(name="test_run", exporter=exporter)
         async with tracer as root_span:
-            outcomes = await run_pipeline(csv_path, tracer=tracer)
+            outcomes = await run_pipeline(csv_path)
         return outcomes, exporter, root_span
 
     outcomes, exporter, root_span = asyncio.run(_run())

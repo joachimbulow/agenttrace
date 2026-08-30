@@ -54,7 +54,7 @@ def test_pipeline_runs_end_to_end_over_sample_fixture() -> None:
     async def _run() -> list:
         tracer = Tracer(name="test_pipeline", exporter=_NoopExporter())
         async with tracer:
-            return await run_pipeline(str(SAMPLE_CSV), tracer=tracer)
+            return await run_pipeline(str(SAMPLE_CSV))
 
     outcomes = asyncio.run(_run())
 

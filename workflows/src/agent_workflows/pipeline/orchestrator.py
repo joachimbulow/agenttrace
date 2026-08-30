@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from dataclasses import replace
 
 from agent_trace_sdk import Tracer, get_current_run_id
@@ -81,19 +80,21 @@ async def _run_record(
     return replace(outcome, run_id=get_current_run_id())
 
 
-async def run_pipeline(csv_path: str, *, tracer: Tracer) -> list[PipelineOutcome]:
+async def run_pipeline(csv_path: str) -> list[PipelineOutcome]:
     """Load `csv_path` and run every record through the pipeline.
 
-    Records are processed concurrently (each gets its own graph run); this
-    doesn't change the per-record graph shape described above, and each
-    record's spans nest under its own `primo_record[<record_id>]`
-    span rather than being interleaved flat under the pipeline root.
+    Must be called inside `async with Tracer(...)` so the handler can bind
+    to the active tracer. Records run one after another; each record's
+    spans nest under its own `primo_record[<record_id>]` span.
     """
-    handler = AgentTraceCallbackHandler(tracer, attribute_keys=("record_id", "policy_id"))
+    tracer = Tracer.get_instance()
+    if tracer is None:
+        raise RuntimeError("run_pipeline must be called inside a Tracer context")
+    handler = AgentTraceCallbackHandler(
+        tracer, attribute_keys=("record_id", "policy_id")
+    )
     records = load_records(csv_path)
     results = []
     for record in records:
-        res = await asyncio.create_task(_run_record(record, handler))
-        results.append(res)
-        
+        results.append(await _run_record(record, handler))
     return results
