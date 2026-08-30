@@ -1,11 +1,11 @@
 // See docs/decisions/0003-layout-per-tick-over-incremental-spawn.md.
 import type { TraceNode } from '@/features/trace-graph/types/trace';
 
-export const CARD_WIDTH = 196;
+export const CARD_WIDTH = 220;
 export const CARD_HEIGHT = 132;
 
 /** Horizontal gap between leaf columns. */
-const SLOT_GAP = 34;
+const SLOT_GAP = 64;
 /** Vertical gap between depth bands. */
 const BAND_GAP = 58;
 

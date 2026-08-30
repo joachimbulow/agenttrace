@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { isRecord } from '@/features/trace-graph/lib/payload';
 import { ScalarValue } from '@/features/trace-graph/components/ScalarValue';
 import { cn } from '@/shared/lib/utils';
 
 export function PayloadTree({ value }: { value: unknown }) {
   return (
-    <div className="text-[11px] leading-snug">
+    <div className="text-[12px] leading-relaxed">
       <ValueView value={value} />
     </div>
   );
@@ -19,7 +19,7 @@ function ValueView({ value }: { value: unknown }) {
       return <span className="font-mono text-muted-foreground">{'{}'}</span>;
     }
     return (
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-2">
         {entries.map(([name, nested]) => (
           <FieldRow key={name} name={name} value={nested} />
         ))}
@@ -32,7 +32,7 @@ function ValueView({ value }: { value: unknown }) {
       return <span className="font-mono text-muted-foreground">[]</span>;
     }
     return (
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col gap-2">
         {value.map((item, index) => (
           <FieldRow key={index} name={String(index)} value={item} />
         ))}
@@ -45,12 +45,14 @@ function ValueView({ value }: { value: unknown }) {
 
 function FieldRow({ name, value }: { name: string; value: unknown }) {
   const nestable = isRecord(value) || Array.isArray(value);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   if (!nestable) {
     return (
-      <div className="flex min-w-0 gap-2">
-        <span className="shrink-0 font-mono text-muted-foreground">{name}</span>
+      <div className="flex min-w-0 items-baseline gap-3">
+        <span className="w-[7.5rem] shrink-0 truncate font-mono text-[11px] text-muted-foreground">
+          {name}
+        </span>
         <ScalarValue value={value} maxChars={Number.POSITIVE_INFINITY} wrap />
       </div>
     );
@@ -59,26 +61,29 @@ function FieldRow({ name, value }: { name: string; value: unknown }) {
   const count = Array.isArray(value) ? value.length : Object.keys(value).length;
 
   return (
-    <div>
+    <div className="flex flex-col gap-1.5">
       <button
         type="button"
         onClick={() => setOpen((current) => !current)}
         className={cn(
-          'flex max-w-full items-center gap-1 rounded-sm text-left',
+          'flex max-w-full items-center gap-1.5 rounded-sm py-0.5 text-left',
           'hover:bg-accent/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
         )}
       >
-        <ChevronRight
+        <ChevronDown
           aria-hidden
-          className={cn('h-3 w-3 shrink-0 text-muted-foreground transition-transform', open && 'rotate-90')}
+          className={cn(
+            'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform',
+            !open && '-rotate-90'
+          )}
         />
-        <span className="font-mono text-muted-foreground">{name}</span>
-        <span className="font-mono text-muted-foreground/80">
+        <span className="font-mono text-[11px] text-muted-foreground">{name}</span>
+        <span className="font-mono text-[11px] text-muted-foreground/70">
           {Array.isArray(value) ? `[${count}]` : `{${count}}`}
         </span>
       </button>
       {open && (
-        <div className="ml-2 mt-0.5 border-l border-border pl-2">
+        <div className="ml-1.5 border-l border-border/80 py-1 pl-3">
           <ValueView value={value} />
         </div>
       )}

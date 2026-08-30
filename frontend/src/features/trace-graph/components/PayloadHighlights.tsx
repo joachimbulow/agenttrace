@@ -8,7 +8,7 @@ export function PayloadHighlights({ rows }: { rows: Highlight[] }) {
   return (
     <ul className="flex min-h-0 flex-1 flex-col justify-center gap-0.5">
       {rows.map((row) => (
-        <li key={row.key} className="flex min-w-0 items-center gap-1.5">
+        <li key={row.key} className="flex min-w-0 items-center gap-2.5">
           {row.kind === 'chip' ? (
             <span
               className={cn(
