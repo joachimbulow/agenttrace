@@ -29,8 +29,7 @@ import asyncio
 import re
 from typing import Literal
 
-from agent_trace_sdk import add_event
-from agent_trace_sdk.langchain import leaf
+from agent_trace_sdk.langchain import leaf, trace_result
 from langchain_core.runnables import (
     Runnable,
     RunnableConfig,
@@ -54,14 +53,6 @@ _PLATE_PATTERN = re.compile(r"^[A-Z]{2}\d{5}$")
 _COMPARE_FIELDS = ("plate_number", "owner_name", "vehicle_make", "vehicle_model")
 
 
-def _emit_proposal(proposal: DiagnosisProposal) -> DiagnosisProposal:
-    add_event(
-        "result",
-        {"path": proposal.path, "status": proposal.status, "confidence": proposal.confidence},
-    )
-    return proposal
-
-
 def _diagnose_against_source(
     path: Literal["dmr", "db2"],
     finding: EnrichmentFinding,
@@ -69,14 +60,12 @@ def _diagnose_against_source(
     source_label: str,
 ) -> DiagnosisProposal:
     if not finding.data:
-        return _emit_proposal(
-            DiagnosisProposal(
-                path=path,
-                status="gap",
-                proposed_correction=None,
-                rationale=f"{path.upper()} path: {finding.details} -- cannot diagnose without reference data.",
-                confidence=0.35,
-            )
+        return DiagnosisProposal(
+            path=path,
+            status="gap",
+            proposed_correction=None,
+            rationale=f"{path.upper()} path: {finding.details} -- cannot diagnose without reference data.",
+            confidence=0.35,
         )
 
     mismatched = [
@@ -85,74 +74,64 @@ def _diagnose_against_source(
         if record.raw.get(field) != finding.data.get(field)
     ]
     if not mismatched:
-        return _emit_proposal(
-            DiagnosisProposal(
-                path=path,
-                status="match",
-                proposed_correction=None,
-                rationale=f"{path.upper()} path: record matches {source_label} on all compared fields.",
-                confidence=0.95,
-            )
+        return DiagnosisProposal(
+            path=path,
+            status="match",
+            proposed_correction=None,
+            rationale=f"{path.upper()} path: record matches {source_label} on all compared fields.",
+            confidence=0.95,
         )
 
     fields = ", ".join(mismatched)
-    return _emit_proposal(
-        DiagnosisProposal(
-            path=path,
-            status="mismatch",
-            proposed_correction=f"Align record with {source_label} ({fields}).",
-            rationale=f"{path.upper()} path: mismatch on {fields}.",
-            confidence=0.85,
-        )
+    return DiagnosisProposal(
+        path=path,
+        status="mismatch",
+        proposed_correction=f"Align record with {source_label} ({fields}).",
+        rationale=f"{path.upper()} path: mismatch on {fields}.",
+        confidence=0.85,
     )
 
 
+@trace_result("path", "status", "confidence")
 def _diagnose_from_dmr(enrichment: EnrichmentResult) -> DiagnosisProposal:
     return _diagnose_against_source(
         "dmr", enrichment.dmr, enrichment.gate.record, "DMR reference"
     )
 
 
+@trace_result("path", "status", "confidence")
 def _diagnose_from_db2(enrichment: EnrichmentResult) -> DiagnosisProposal:
     return _diagnose_against_source(
         "db2", enrichment.db2, enrichment.gate.record, "Primo DB2"
     )
 
 
+@trace_result("path", "status", "confidence")
 def _diagnose_from_rules(enrichment: EnrichmentResult) -> DiagnosisProposal:
     record = enrichment.gate.record
     plate = record.raw.get("plate_number", "")
     if _PLATE_PATTERN.match(plate):
-        return _emit_proposal(
-            DiagnosisProposal(
-                path="rules",
-                status="match",
-                proposed_correction=None,
-                rationale=f"Rules path: plate '{plate}' passes format check; no anomaly detected.",
-                confidence=0.7,
-            )
-        )
-    return _emit_proposal(
-        DiagnosisProposal(
+        return DiagnosisProposal(
             path="rules",
-            status="mismatch",
-            proposed_correction="Flag for manual plate-format review.",
-            rationale=f"Rules path: plate '{plate}' fails expected format check.",
-            confidence=0.6,
+            status="match",
+            proposed_correction=None,
+            rationale=f"Rules path: plate '{plate}' passes format check; no anomaly detected.",
+            confidence=0.7,
         )
+    return DiagnosisProposal(
+        path="rules",
+        status="mismatch",
+        proposed_correction="Flag for manual plate-format review.",
+        rationale=f"Rules path: plate '{plate}' fails expected format check.",
+        confidence=0.6,
     )
 
 
 def _merge(parts: dict) -> DiagnosisResult:
-    result = DiagnosisResult(
+    return DiagnosisResult(
         enrichment=parts["enrichment"],
         proposals=(parts["dmr"], parts["db2"], parts["rules"]),
     )
-    add_event(
-        "result",
-        {proposal.path: proposal.status for proposal in result.proposals},
-    )
-    return result
 
 
 diagnose_chain: Runnable[EnrichmentResult, DiagnosisResult] = (
@@ -166,6 +145,7 @@ diagnose_chain: Runnable[EnrichmentResult, DiagnosisResult] = (
 ).with_config(run_name="diagnose")
 
 
+@trace_result()
 async def diagnose_node(state: PipelineState, config: RunnableConfig) -> dict:
     await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.enrichment is not None

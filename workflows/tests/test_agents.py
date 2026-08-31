@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import asyncio
 
-from agent_trace_sdk import Tracer
-from agent_trace_sdk.domain.interfaces import ExportBatch, IEventExporter
 from langchain_core.runnables import Runnable
 
 from agent_workflows.agents.correct_validate.agent import correct_validate_chain
@@ -14,21 +12,6 @@ from agent_workflows.agents.gate.agent import gate_chain
 from agent_workflows.agents.judge.agent import judge_chain
 from agent_workflows.agents.save_result.agent import save_result_chain
 from agent_workflows.models.schemas import EnrichmentFinding, GateResult, RawRecord
-
-
-class _CapturingExporter(IEventExporter):
-    def __init__(self) -> None:
-        self.batches: list[ExportBatch] = []
-
-    async def export(self, batch: ExportBatch) -> bool:
-        self.batches.append(batch)
-        return True
-
-    async def flush(self) -> None:
-        pass
-
-    async def close(self) -> None:
-        pass
 
 ALL_CHAINS = [
     gate_chain,
@@ -100,26 +83,3 @@ def test_diagnose_chain_converges_three_paths() -> None:
     # POL-1003: CSV plate matches DMR (CD44444), not DB2 (CD00000).
     assert by_path["dmr"].status == "match"
     assert by_path["db2"].status == "mismatch"
-
-
-def test_gate_emits_result_on_active_span() -> None:
-    async def _run():
-        exporter = _CapturingExporter()
-        tracer = Tracer(name="gate_result", exporter=exporter)
-        async with tracer:
-            with tracer.start_span("gate", span_type="step"):
-                return gate_chain.invoke(
-                    RawRecord(policy_id="POL-1001", task_type="12_11")
-                ), exporter
-
-    result, exporter = asyncio.run(_run())
-    assert result is not None
-    assert result.known is True
-    results = [
-        event
-        for batch in exporter.batches
-        for event in batch.events
-        if event.event_type == "span_event" and event.data.get("event_type") == "result"
-    ]
-    assert results
-    assert results[0].data["payload"] == {"known": True, "task_type": "12_11"}

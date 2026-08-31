@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 
-from agent_trace_sdk import add_event
+from agent_trace_sdk.langchain import trace_result
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import PipelineOutcome, ResultDecision
@@ -34,7 +34,6 @@ def _correct_validate(decision: ResultDecision) -> PipelineOutcome:
         },
     )
 
-    add_event("result", {"branch": "correct_validate", "confidence": verdict.confidence})
     return PipelineOutcome(
         policy_id=record.policy_id,
         task_type=record.task_type,
@@ -51,6 +50,7 @@ correct_validate_chain: Runnable[ResultDecision, PipelineOutcome] = RunnableLamb
 ).with_config(run_name="correct_validate")
 
 
+@trace_result("branch", "confidence")
 async def correct_validate_node(state: PipelineState, config: RunnableConfig) -> dict:
     await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.decision is not None

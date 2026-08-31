@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 
-from agent_trace_sdk import add_event
+from agent_trace_sdk.langchain import trace_result
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import GateResult, PipelineOutcome, RawRecord
@@ -26,9 +26,7 @@ KNOWN_TASK_TYPES: frozenset[str] = frozenset({"12_11"})
 
 
 def _gate(record: RawRecord) -> GateResult:
-    known = record.task_type in KNOWN_TASK_TYPES
-    add_event("result", {"known": known, "task_type": record.task_type})
-    if known:
+    if record.task_type in KNOWN_TASK_TYPES:
         return GateResult(
             record=record, known=True, reason=f"task_type '{record.task_type}' recognized."
         )
@@ -42,17 +40,18 @@ def _gate(record: RawRecord) -> GateResult:
 gate_chain: Runnable[RawRecord, GateResult] = RunnableLambda(_gate).with_config(run_name="gate")
 
 
+@trace_result("known", "reason")
 async def gate_node(state: PipelineState, config: RunnableConfig) -> dict:
     await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     gate = await gate_chain.ainvoke(state.record, config)
     return {"gate": gate}
 
 
+@trace_result("known", "task_type")
 async def reject_node(state: PipelineState) -> dict:
     await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.gate is not None
     gate = state.gate
-    add_event("result", {"known": False, "task_type": gate.record.task_type})
     return {
         "outcome": PipelineOutcome(
             policy_id=gate.record.policy_id,

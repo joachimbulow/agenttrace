@@ -21,17 +21,22 @@ walking up through skipped wrappers.
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Sequence
+import inspect
+from collections.abc import Callable, Sequence
 from contextvars import Token
-from typing import Any
+from functools import wraps
+from typing import Any, TypeVar
 from uuid import UUID
 
 from langchain_core.callbacks.base import AsyncCallbackHandler
 from langchain_core.runnables import Runnable
+from pydash import filter_, merge, pick
 
-from .context import get_current_span, reset_current_span, set_current_span
+from .context import add_event, get_current_span, reset_current_span, set_current_span
 from .span import Span
 from .tracer import Tracer
+
+F = TypeVar("F", bound=Callable[..., Any])
 
 # Tag bound (via `leaf`) on a parallel sub-agent Runnable so the callback
 # handler can tell it apart from LangChain's own internal wrapper runs.
@@ -63,6 +68,41 @@ def leaf(
         tags=[LEAF_TAG],
         metadata={LEAF_SPAN_TYPE_KEY: span_type},
     )
+
+
+def trace_result(*fields: str) -> Callable[[F], F]:
+    """Mark which return fields are this span's `result` for easy"""
+    def decorator(fn: F) -> F:
+        if inspect.iscoroutinefunction(fn):
+
+            @wraps(fn)
+            async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+                out = await fn(*args, **kwargs)
+                _emit_result(out, fields)
+                return out
+
+            return async_wrapper  # type: ignore[return-value]
+
+        @wraps(fn)
+        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+            out = fn(*args, **kwargs)
+            _emit_result(out, fields)
+            return out
+
+        return sync_wrapper  # type: ignore[return-value]
+
+    return decorator
+
+
+def _emit_result(out: Any, fields: tuple[str, ...]) -> None:
+    data = _to_jsonable(out)
+    if not isinstance(data, dict):
+        data = {"value": data}
+    if fields:
+        nested = filter_(data.values(), lambda v: isinstance(v, dict))
+        data = pick(merge({}, data, *nested), *fields)
+    if data:
+        add_event("result", data)
 
 
 def _to_jsonable(value: Any) -> Any:

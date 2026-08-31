@@ -8,8 +8,6 @@ import pytest
 
 pytest.importorskip("langchain_core")
 
-from langchain_core.runnables import RunnableLambda
-
 from agent_trace_sdk import Tracer, add_event, get_current_span
 from agent_trace_sdk.domain.interfaces import ExportBatch, IEventExporter
 from agent_trace_sdk.langchain import (
@@ -17,7 +15,9 @@ from agent_trace_sdk.langchain import (
     LEAF_TAG,
     AgentTraceCallbackHandler,
     leaf,
+    trace_result,
 )
+from langchain_core.runnables import RunnableLambda
 
 
 class _CapturingExporter(IEventExporter):
@@ -49,22 +49,21 @@ def test_handlers_export_only_to_their_own_tracer() -> None:
         t2 = Tracer(name="t2", exporter=exp2)
         h1 = AgentTraceCallbackHandler(t1)
         h2 = AgentTraceCallbackHandler(t2)
-        async with t1:
-            async with t2:
-                await h1.on_chain_start(
-                    {},
-                    {},
-                    run_id=uuid4(),
-                    parent_run_id=None,
-                    name="from_t1",
-                )
-                await h2.on_chain_start(
-                    {},
-                    {},
-                    run_id=uuid4(),
-                    parent_run_id=None,
-                    name="from_t2",
-                )
+        async with t1, t2:
+            await h1.on_chain_start(
+                {},
+                {},
+                run_id=uuid4(),
+                parent_run_id=None,
+                name="from_t1",
+            )
+            await h2.on_chain_start(
+                {},
+                {},
+                run_id=uuid4(),
+                parent_run_id=None,
+                name="from_t2",
+            )
 
         names1 = [e.data["name"] for e in _events(exp1) if e.event_type == "span_start"]
         names2 = [e.data["name"] for e in _events(exp2) if e.event_type == "span_start"]
@@ -140,6 +139,30 @@ def test_handler_runs_inline() -> None:
     tracer = Tracer(name="root", exporter=exporter)
     handler = AgentTraceCallbackHandler(tracer)
     assert handler.run_inline is True
+
+
+def test_result_annotation_picks_named_fields() -> None:
+    async def _run() -> None:
+        exporter = _CapturingExporter()
+        tracer = Tracer(name="root", exporter=exporter)
+
+        @trace_result("conflict", "confidence")
+        def node() -> dict:
+            return {"verdict": {"conflict": False, "confidence": 0.98, "rationale": "long"}}
+
+        async with tracer:
+            with tracer.start_span("judge", span_type="llm_call"):
+                node()
+
+        results = [
+            e
+            for e in _events(exporter)
+            if e.event_type == "span_event" and e.data.get("event_type") == "result"
+        ]
+        assert results
+        assert results[0].data["payload"] == {"conflict": False, "confidence": 0.98}
+
+    asyncio.run(_run())
 
 
 def test_leaf_binds_tag_and_span_type() -> None:

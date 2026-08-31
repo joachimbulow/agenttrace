@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 
-from agent_trace_sdk import add_event
+from agent_trace_sdk.langchain import trace_result
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import JudgeVerdict, ResultDecision
@@ -25,7 +25,6 @@ CONFIDENCE_THRESHOLD = 0.75
 
 def _determine_result(verdict: JudgeVerdict) -> ResultDecision:
     branch = "correct_validate" if verdict.confidence >= CONFIDENCE_THRESHOLD else "save_result"
-    add_event("result", {"branch": branch, "confidence": verdict.confidence})
     return ResultDecision(verdict=verdict, branch=branch, threshold=CONFIDENCE_THRESHOLD)
 
 
@@ -34,6 +33,7 @@ determine_result_chain: Runnable[JudgeVerdict, ResultDecision] = RunnableLambda(
 ).with_config(run_name="determine_result")
 
 
+@trace_result("branch")
 async def determine_result_node(state: PipelineState, config: RunnableConfig) -> dict:
     await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.verdict is not None

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 
-from agent_trace_sdk import add_event
+from agent_trace_sdk.langchain import trace_result
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda
 
 from agent_workflows.models.schemas import PipelineOutcome, ResultDecision
@@ -39,7 +39,6 @@ def _save_result(decision: ResultDecision) -> PipelineOutcome:
         },
     )
 
-    add_event("result", {"branch": "save_result", "confidence": verdict.confidence})
     return PipelineOutcome(
         policy_id=record.policy_id,
         task_type=record.task_type,
@@ -56,6 +55,7 @@ save_result_chain: Runnable[ResultDecision, PipelineOutcome] = RunnableLambda(
 ).with_config(run_name="save_result")
 
 
+@trace_result("branch", "confidence")
 async def save_result_node(state: PipelineState, config: RunnableConfig) -> dict:
     await asyncio.sleep(5)  # TEMP: pause so the UI can be watched during test runs
     assert state.decision is not None

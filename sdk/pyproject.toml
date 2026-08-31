@@ -5,6 +5,7 @@ description = "SDK for AI Agent Step Debugger"
 requires-python = ">=3.10"
 dependencies = [
     "httpx>=0.26.0",
+    "pydash>=8.0.0",
 ]
 
 [project.optional-dependencies]
